@@ -1,14 +1,14 @@
 # n8n templates
 
-Production patterns rebuilt clean and generic, with the error handling left in. Each folder has the workflow JSON, a canvas screenshot, sample data, and a README that says what every node does and where to plug in your own credentials.
+Production patterns rebuilt clean and generic, with the error handling left in. Each folder documents what every node does, which credentials to create and how failures are handled. The workflow JSON and sample data are being added one pattern at a time.
 
 Built by [Javier Noguera Rodríguez](https://janr0599.github.io) · automation and AI engineer.
 
 | # | Pattern | What it solves | Status |
 |---|---|---|---|
-| 01 | [Inbound email → CRM conversation, with attachments](./01-inbound-email-to-crm-thread) | Every email threaded onto the right contact, attachments filed and linked | in progress |
-| 02 | [Scheduled reminders with Data Table dedupe](./02-scheduled-reminders-data-table-dedupe) | 48 / 24 / 1 h reminders that never double-send | in progress |
-| 03 | [Chat intake agent with human handoff](./03-chat-intake-agent-human-handoff) | Agent, memory, message buffering, tools, and a classifier that hands off to a person | in progress |
+| 01 | [Inbound email → CRM conversation, with attachments](./01-inbound-email-to-crm-thread) | Every email threaded onto the right contact, attachments filed and linked | documented |
+| 02 | [Scheduled reminders with Data Table dedupe](./02-scheduled-reminders-data-table-dedupe) | 48 / 24 / 1 h reminders that never double-send | documented |
+| 03 | [Chat intake agent with human handoff](./03-chat-intake-agent-human-handoff) | Agent, memory, message buffering, tools, and a classifier that hands off to a person | documented |
 
 ## Conventions
 
@@ -19,4 +19,6 @@ Built by [Javier Noguera Rodríguez](https://janr0599.github.io) · automation a
 
 ## Importing
 
-n8n → Workflows → Import from file → pick the `.json`. Then follow the folder's README to attach credentials and run it against the sample data.
+Once a folder has its `.json`: n8n → Workflows → Import from file → pick the file,
+then follow that folder's README to attach credentials and run it against the
+sample data.
