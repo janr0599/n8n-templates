@@ -2,7 +2,7 @@
 
 Production patterns rebuilt clean and generic, with the error handling left in. Each folder documents what every node does, which credentials to create and how failures are handled. The workflow JSON and sample data are being added one pattern at a time.
 
-Built by [Javier Noguera Rodríguez](https://janr0599.github.io) · automation and AI engineer.
+Built by [Javier Noguera Rodríguez](https://javiernoguera.com) · automation and AI engineer.
 
 | # | Pattern | What it solves | Status |
 |---|---|---|---|
