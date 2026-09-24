@@ -1,0 +1,1420 @@
+{
+  "name": "Prospect research and first-touch draft",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "8d2de02d-ce1f-435c-b1e1-fab8b70d977e",
+      "name": "Daily Draft Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_TABLE_ID"
+        },
+        "filterByFormula": "={Prospect Status} = 'New'",
+        "returnAll": false,
+        "limit": 20,
+        "options": {
+          "fields": [
+            "Company Name",
+            "Email",
+            "Website",
+            "City",
+            "State",
+            "Focus Areas",
+            "Google Rating",
+            "Reviews Count",
+            "Search Query"
+          ]
+        }
+      },
+      "id": "dedafd2a-d7d3-4b6c-9f34-65445f4eac50",
+      "name": "Get New Prospects",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        0
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.fields.Website }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-US,en;q=0.9"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "c77e7cbf-703b-4680-8275-0f78d8ebfbdf",
+      "name": "Fetch Company Website",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        0
+      ],
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const gp = $('Get New Prospects').item.json;\nconst p = gp.fields || gp;\nconst homeHtml = (($('Find Contact Page').item.json.homeHtml || '') + '');\nconst contactHtml = (($('Fetch Contact Page').item.json.data || '') + '');\nconst teamHtml = (($json.data || '') + '');\nconst strip = (h) => h.replace(/<script[\\s\\S]*?<\\/script>/gi,' ').replace(/<style[\\s\\S]*?<\\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;/gi,' ').replace(/&amp;/gi,'&').replace(/\\s+/g,' ').trim();\nconst homeT = strip(homeHtml).slice(0, 4000);\nconst contactT = strip(contactHtml).slice(0, 3000);\nconst teamT = strip(teamHtml).slice(0, 10000);\nconst text = 'HOME PAGE:\\n' + homeT + '\\n\\nCONTACT PAGE:\\n' + contactT + '\\n\\nTEAM / ABOUT PAGE:\\n' + teamT;\nconst both = homeHtml + ' ' + contactHtml + ' ' + teamHtml;\nconst emailSet = new Set();\nconst re = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/g;\nlet mm;\nwhile ((mm = re.exec(both)) !== null) {\n  const e = mm[0].toLowerCase();\n  if (/(\\.png|\\.jpg|\\.jpeg|\\.gif|\\.webp|\\.svg)$/.test(e)) continue;\n  if (e.includes('sentry') || e.includes('wixpress') || e.includes('example.com') || e.includes('robot.zapier')) continue;\n  emailSet.add(e);\n}\nconst foundEmails = Array.from(emailSet).slice(0, 12).join(', ');\nreturn { json: {\n  recordId: gp.id,\n  companyName: p['Company Name'] || '',\n  website: p['Website'] || '',\n  city: p['City'] || '',\n  state: p['State'] || '',\n  focusSeed: p['Focus Areas'] || p['Search Query'] || '',\n  rating: p['Google Rating'] || '',\n  reviews: p['Reviews Count'] || '',\n  existingEmail: p['Email'] || '',\n  existingContact: p['Contact Name'] || '',\n  foundEmails: foundEmails,\n  siteText: text\n} };"
+      },
+      "id": "2f11d946-4724-4519-abff-6125404a2ec5",
+      "name": "Build AI Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are YOUR_NAME, founder of YOUR_COMPANY (YOUR_DOMAIN), writing a genuine one-to-one cold email to a YOUR_TARGET. YOUR_COMPANY WHAT_YOU_SELL.\n\nCOMPANY DATA:\nName: {{ $json.companyName }}\nWebsite: {{ $json.website }}\nLocation: {{ $json.city }}, {{ $json.state }}\nFocus (from search): {{ $json.focusSeed }}\nGoogle rating: {{ $json.rating }} ({{ $json.reviews }} reviews)\nEmails found on site: {{ $json.foundEmails }}\nContact name already known: {{ $json.existingContact }}\n\nWEBSITE TEXT (home + contact + team/about pages, may be empty):\n{{ $json.siteText }}\n\nTASKS:\n1. ICP fit score 0-100 = how much YOUR_COMPANY could help THIS company. Any legitimate YOUR_TARGET is a good fit regardless of size. Score UNDER 40 ONLY when it is clearly not a YOUR_TARGET we can help.\n2. Infer company size (Solo, 2-5, 6-10, 11-25, 26-50, Unknown), but ONLY assign a specific bucket when the team or people pages give clear evidence such as named staff or a stated team count. If there is no clear evidence, return Unknown. Do NOT guess a size from vague phrases like 'our team'. This does NOT affect the score.\n3. Identify the best person to address (founder, owner, managing partner, or another named decision maker). Return their FIRST NAME ONLY in contactName. If no specific person is identifiable, return an empty string. You MAY warmly mention another named team member in the body, but ONLY if the site clearly states who they are and their role. Never guess a person's role or invent names.\n4. Choose the single best CONTACT email from the candidates, in this priority order: (a) a named individual's personal address on the company's own domain, (b) intake@ on the company domain, (c) info@ / contact@ / hello@ / office@ on the company domain, (d) any other company-domain address. AVOID marketing@, pr@, press@, media@, devteam@, no-reply@, and personal free email (gmail, yahoo, outlook) unless it is clearly the company's only contact. If none is reasonable, return an empty string.\n5. Write 2 to 3 concrete personalization hooks referencing positive, publicly evident specifics about THIS company (focus area, reputation, reviews, location, notable named team members). NEVER write a hook about how the site is built or accessed, or about any research or data-access limitation (for example content behind JavaScript, hidden content, or anything you could not see).\n6. Write researchNotes: a short, neutral to positive profile of the company based on the data above. NEVER mention scraping, the site's technology, JavaScript, or that content was limited or could not be seen. If the website text was empty or thin, simply base it on the company name, location, focus area, and reviews without commenting on the lack of detail.\n7. Write the cold email in draftBody:\n   - Start with a natural greeting on its own line addressing the decision-maker by first name if known ('Hi Rachel,'), otherwise 'Hi <company name> team,'. ALWAYS greet the decision-maker by name when you know it, even if the chosen email is a general inbox like info@ or contact@; a staffer will forward a clearly personal, relevant note to them. Never use a bracketed placeholder.\n   - Then 2 to 3 SHORT paragraphs, each 2-3 sentences, separated by a blank line. Paragraph 1: a specific, genuine, positive observation about the company (focus area, reputation, reviews, location). NEVER comment on their website's technology or on anything you could not see. Paragraph 2: how YOUR_COMPANY helps companies like theirs, in the terms of WHAT_YOU_SELL; present these as common possibilities, not assumptions about their company, and do NOT name any specific software product; refer generally to 'the tools and systems your team already uses'. Paragraph 3: a warm, low-pressure invitation to a quick call or brief chat (do NOT state any number of minutes) to learn about their current process and see if YOUR_COMPANY could help. Make clear you are open to wherever they feel the most friction, and gently invite them to share any other bottlenecks, delays, or manual processes they would like to streamline; do not assume you already know which problem is theirs. Do NOT promise to show, build, or demo a specific workflow on the call; frame it as a short conversation to understand their needs and see if it is a fit.\n   - 90-140 words total. Warm, direct, honest, human, not salesy.\n   - Do NOT write a signature or sign-off (added automatically later).\n   - CRITICAL: never use em dashes or en dashes anywhere. Use commas or periods, and write ranges as '3 to 6 hours'. Avoid corporate buzzwords and hype.\n   - CRITICAL: never mention how you found or researched them, their website's technology, or any data-access limitation. Only reference positive, concrete, publicly evident facts.\n8. Provide draftSubject: a short, specific subject line with no em or en dashes and no number of minutes.\n\nReturn ONLY the structured JSON.",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "id": "e9590970-1cbd-4675-89b0-5815d10c108b",
+      "name": "Research & Draft Email",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        1792,
+        0
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "responsesApiEnabled": false,
+        "options": {
+          "reasoningEffort": "low"
+        }
+      },
+      "id": "453c34aa-5889-4703-a0f2-4443a407e98b",
+      "name": "OpenAI GPT-5 mini",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        1792,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{ \"email\": \"info@example.com\", \"contactName\": \"Rachel\", \"fitScore\": 85, \"companySize\": \"2-5\", \"focusAreas\": \"Estate Planning, Elder Law\", \"researchNotes\": \"Boston boutique estate planning company; small team; strong reviews.\", \"hooks\": \"- point one\\n- point two\", \"draftSubject\": \"a quick idea for your intake process\", \"draftBody\": \"Hi Rachel,\\n\\nI noticed your company focuses on estate planning in Boston and has excellent reviews.\\n\\nWe help small companies like yours automate intake and follow-ups so you spend less time on repetitive admin.\\n\\nWould you be open to a quick call or chat in the next week or two?\" }"
+      },
+      "id": "d9062a33-bee3-4089-a58a-df05e24e2357",
+      "name": "Draft JSON Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1952,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const o = $json.output || $json;\nconst ctx = $('Build AI Context').item.json;\nconst num = (v) => { const n = Number(v); return isNaN(n) ? 0 : n; };\nconst clean = (s) => (s || '').toString()\n  .replace(/(\\d)\\s*[\u2013\u2014]\\s*(\\d)/g, '$1 to $2')\n  .replace(/\\s*\u2014\\s*/g, ', ')\n  .replace(/\\s*\u2013\\s*/g, ', ')\n  .replace(/[\u2018\u2019\u02bc\u2032]/g, \"'\")\n  .replace(/[\u201c\u201d]/g, '\"')\n  .replace(/\\r\\n/g, '\\n')\n  .replace(/\\n{3,}/g, '\\n\\n')\n  .trim();\nconst bad = /(marketing|^pr@|press|media|devteam|no-?reply|protected|cloudflare|@(gmail|yahoo|hotmail|outlook|aol)\\.)/i;\nconst ok = (e) => !!e && /^[^@\\s]+@[^@\\s]+\\.[a-z]{2,}$/i.test(e) && !bad.test(e);\nconst pickEmail = (list) => {\n  const arr = (list || '').split(',').map(s => s.trim()).filter(ok);\n  const score = (e) => /^intake@/i.test(e) ? 3 : (/^(info|contact|hello|office|admin)@/i.test(e) ? 2 : 1);\n  arr.sort((a, b) => score(b) - score(a));\n  return arr[0] || '';\n};\nlet email = (o.email || '').toString().trim();\nif (!ok(email)) { email = pickEmail(ctx.foundEmails); }\nif (!email) { const ex = (ctx.existingEmail || '').trim(); if (ok(ex)) email = ex; }\nreturn { json: {\n  recordId: ctx.recordId,\n  email: email,\n  contactName: (o.contactName || '').toString().trim(),\n  fitScore: num(o.fitScore),\n  companySize: o.companySize || 'Unknown',\n  focusAreas: o.focusAreas || '',\n  researchNotes: o.researchNotes || '',\n  hooks: o.hooks || '',\n  draftSubject: clean(o.draftSubject),\n  draftBody: clean(o.draftBody)\n} };"
+      },
+      "id": "a2ee4d36-51f1-46cf-aa51-26c2fb4c4e56",
+      "name": "Prepare Update",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2144,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.fitScore }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              },
+              "rightValue": 60
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8208c237-eedf-49ca-b1e0-6755fc805ea0",
+      "name": "Fit Score >= 60?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2368,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.recordId }}",
+            "Email": "={{ $json.email || $(\"Build AI Context\").item.json.existingEmail }}",
+            "Fit Score": "={{ $json.fitScore }}",
+            "Company Size": "={{ $json.companySize }}",
+            "Focus Areas": "={{ $json.focusAreas }}",
+            "Research Notes": "={{ $json.researchNotes }}",
+            "Personalization Hooks": "={{ $json.hooks }}",
+            "Draft Subject": "={{ $json.draftSubject }}",
+            "Draft Body": "={{ $json.draftBody }}",
+            "Prospect Status": "Draft Ready",
+            "Contact Name": "={{ $json.contactName }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true
+            },
+            {
+              "id": "Company Name",
+              "displayName": "Company Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Contact Name",
+              "displayName": "Contact Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "City",
+              "displayName": "City",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "State",
+              "displayName": "State",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Focus Areas",
+              "displayName": "Focus Areas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Solo",
+                  "value": "Solo"
+                },
+                {
+                  "name": "2-5",
+                  "value": "2-5"
+                },
+                {
+                  "name": "6-10",
+                  "value": "6-10"
+                },
+                {
+                  "name": "11-25",
+                  "value": "11-25"
+                },
+                {
+                  "name": "26-50",
+                  "value": "26-50"
+                },
+                {
+                  "name": "Unknown",
+                  "value": "Unknown"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Google Rating",
+              "displayName": "Google Rating",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Reviews Count",
+              "displayName": "Reviews Count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fit Score",
+              "displayName": "Fit Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Research Notes",
+              "displayName": "Research Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Personalization Hooks",
+              "displayName": "Personalization Hooks",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Draft Subject",
+              "displayName": "Draft Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Draft Body",
+              "displayName": "Draft Body",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Prospect Status",
+              "displayName": "Prospect Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Researched",
+                  "value": "Researched"
+                },
+                {
+                  "name": "Draft Ready",
+                  "value": "Draft Ready"
+                },
+                {
+                  "name": "Sent",
+                  "value": "Sent"
+                },
+                {
+                  "name": "Replied",
+                  "value": "Replied"
+                },
+                {
+                  "name": "Bounced",
+                  "value": "Bounced"
+                },
+                {
+                  "name": "Disqualified",
+                  "value": "Disqualified"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Discovery Source",
+              "displayName": "Discovery Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Google Maps (Apify)",
+                  "value": "Google Maps (Apify)"
+                },
+                {
+                  "name": "Google Places",
+                  "value": "Google Places"
+                },
+                {
+                  "name": "Manual",
+                  "value": "Manual"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Search Query",
+              "displayName": "Search Query",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Approved",
+              "displayName": "Approved",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Unsubscribed",
+              "displayName": "Unsubscribed",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Last Contacted",
+              "displayName": "Last Contacted",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Sourced At",
+              "displayName": "Sourced At",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Communication Log",
+              "displayName": "Communication Log",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Converted Lead",
+              "displayName": "Converted Lead",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Delivered",
+              "displayName": "Delivered",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Opened",
+              "displayName": "Opened",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Clicked",
+              "displayName": "Clicked",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Bounced",
+              "displayName": "Bounced",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Complained",
+              "displayName": "Complained",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Reply Sentiment",
+              "displayName": "Reply Sentiment",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Interested",
+                  "value": "Interested"
+                },
+                {
+                  "name": "Not Interested",
+                  "value": "Not Interested"
+                },
+                {
+                  "name": "Unsubscribe Request",
+                  "value": "Unsubscribe Request"
+                },
+                {
+                  "name": "Auto-Reply / OOO",
+                  "value": "Auto-Reply / OOO"
+                },
+                {
+                  "name": "Other",
+                  "value": "Other"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Replied At",
+              "displayName": "Replied At",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "1ef21311-6cdc-4611-b4b2-52db969867d8",
+      "name": "Save Draft (Ready)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2592,
+        -96
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.recordId }}",
+            "Fit Score": "={{ $json.fitScore }}",
+            "Company Size": "={{ $json.companySize }}",
+            "Focus Areas": "={{ $json.focusAreas }}",
+            "Research Notes": "={{ $json.researchNotes }}",
+            "Prospect Status": "Disqualified"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true
+            },
+            {
+              "id": "Company Name",
+              "displayName": "Company Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Contact Name",
+              "displayName": "Contact Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "City",
+              "displayName": "City",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "State",
+              "displayName": "State",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Focus Areas",
+              "displayName": "Focus Areas",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company Size",
+              "displayName": "Company Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Solo",
+                  "value": "Solo"
+                },
+                {
+                  "name": "2-5",
+                  "value": "2-5"
+                },
+                {
+                  "name": "6-10",
+                  "value": "6-10"
+                },
+                {
+                  "name": "11-25",
+                  "value": "11-25"
+                },
+                {
+                  "name": "26-50",
+                  "value": "26-50"
+                },
+                {
+                  "name": "Unknown",
+                  "value": "Unknown"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Google Rating",
+              "displayName": "Google Rating",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Reviews Count",
+              "displayName": "Reviews Count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Fit Score",
+              "displayName": "Fit Score",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "number",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Research Notes",
+              "displayName": "Research Notes",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Personalization Hooks",
+              "displayName": "Personalization Hooks",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Draft Subject",
+              "displayName": "Draft Subject",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Draft Body",
+              "displayName": "Draft Body",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Prospect Status",
+              "displayName": "Prospect Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Researched",
+                  "value": "Researched"
+                },
+                {
+                  "name": "Draft Ready",
+                  "value": "Draft Ready"
+                },
+                {
+                  "name": "Sent",
+                  "value": "Sent"
+                },
+                {
+                  "name": "Replied",
+                  "value": "Replied"
+                },
+                {
+                  "name": "Bounced",
+                  "value": "Bounced"
+                },
+                {
+                  "name": "Disqualified",
+                  "value": "Disqualified"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Discovery Source",
+              "displayName": "Discovery Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Google Maps (Apify)",
+                  "value": "Google Maps (Apify)"
+                },
+                {
+                  "name": "Google Places",
+                  "value": "Google Places"
+                },
+                {
+                  "name": "Manual",
+                  "value": "Manual"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Search Query",
+              "displayName": "Search Query",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Approved",
+              "displayName": "Approved",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Unsubscribed",
+              "displayName": "Unsubscribed",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Last Contacted",
+              "displayName": "Last Contacted",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Sourced At",
+              "displayName": "Sourced At",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Communication Log",
+              "displayName": "Communication Log",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Converted Lead",
+              "displayName": "Converted Lead",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "95028bcc-5d7e-452f-a0a8-e87c75a1e798",
+      "name": "Save (Disqualified)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2592,
+        96
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "content": "## Research and first-touch draft\nFor each new prospect: fetch the company website, find the contact and team pages, then one model call scores fit, picks the contact, and writes the email. Code then re-checks the address before anything is saved. Fit >= 60 -> Draft Ready; below -> Disqualified.",
+        "height": 200,
+        "width": 300,
+        "color": 5
+      },
+      "id": "7e10dde5-51ee-4b06-ac5d-b7c8baa5e763",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -16,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const home = (($('Fetch Company Website').item.json.data || '') + '');\nconst sitemap = (($json.data || '') + '');\nconst gp = $('Get New Prospects').item.json;\nconst base = ((gp.fields && gp.fields.Website) || gp.Website || '').toString();\nconst om = base.match(/^https?:\\/\\/[^\\/?#]+/i);\nconst origin = om ? om[0] : '';\nconst abs = (href) => { if (/^https?:\\/\\//i.test(href)) return href; if (href.charAt(0) === '/') return origin + href; return origin + '/' + href; };\nconst bad = (h) => /\\.(css|js|png|jpg|jpeg|gif|svg|webp|ico|woff2?|ttf|pdf)(\\?|#|$)/i.test(h) || /wp-content|wp-json|wp-includes|mailto:|tel:|javascript:/i.test(h);\nconst anchors = [];\nconst re = /<a\\s[^>]*href=[\"']([^\"']+)[\"'][^>]*>([\\s\\S]*?)<\\/a>/gi;\nlet mm;\nwhile ((mm = re.exec(home)) !== null) { const href = mm[1]; if (bad(href)) continue; const t = mm[2].replace(/<[^>]+>/g,' ').replace(/\\s+/g,' ').trim().toLowerCase(); anchors.push({ href: href, hay: (href + ' ' + t).toLowerCase() }); }\nconst same = (h) => { const a = abs(h); return !origin || a.indexOf(origin) === 0; };\nconst findBest = (patterns) => { for (const rx of patterns) { for (const a of anchors) { if (rx.test(a.hay) && same(a.href)) return a.href; } } return ''; };\nconst contactPats = [/contact.?us/, /\\bcontact\\b/, /get.?in.?touch/, /reach.?us/, /schedule/];\nconst teamPats = [/our.?team/, /meet.?the.?team/, /our.?people/, /leadership/, /\\bteam\\b/, /\\bpeople\\b/, /our.?company/, /\\bbios?\\b/, /profiles?/, /\\bstaff\\b/, /about.?us/, /\\babout\\b/];\nlet contactHref = findBest(contactPats);\nlet teamHref = findBest(teamPats);\nif (!contactHref || !teamHref) {\n  const locs = [];\n  const lre = /<loc>\\s*([^<\\s]+)\\s*<\\/loc>/gi; let lm;\n  while ((lm = lre.exec(sitemap)) !== null) { locs.push(lm[1]); }\n  const pickLoc = (patterns) => { for (const rx of patterns) { for (const u of locs) { if (rx.test(u) && same(u) && !bad(u)) return u; } } return ''; };\n  if (!contactHref) contactHref = pickLoc(contactPats);\n  if (!teamHref) teamHref = pickLoc(teamPats);\n}\nconst contactUrl = contactHref ? abs(contactHref) : (origin ? origin + '/contact/' : '');\nconst teamUrl = teamHref ? abs(teamHref) : (origin ? origin + '/team/' : '');\nreturn { json: { contactUrl: contactUrl, teamUrl: teamUrl, homeHtml: home } };"
+      },
+      "id": "968bd917-dda7-4bce-9840-4a596228467e",
+      "name": "Find Contact Page",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        0
+      ],
+      "notes": "Put the words your own market uses at the FRONT of teamPats, for example /\\battorneys?\\b/ for law firms or /\\bclinicians?\\b/ for clinics. First pattern that matches an anchor wins, then the sitemap is the fallback."
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.contactUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "en-US,en;q=0.9"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "c2a08dd6-dcdf-440c-859d-75baa1abc016",
+      "name": "Fetch Contact Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1120,
+        0
+      ],
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Find Contact Page').item.json.teamUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "id": "ff71e5cb-1e97-46a8-b9b7-3588b84865e6",
+      "name": "Fetch Team Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1344,
+        0
+      ],
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "url": "={{ (($('Get New Prospects').item.json.fields && $('Get New Prospects').item.json.fields.Website) || $('Get New Prospects').item.json.Website || '').replace(/^(https?:\\/\\/[^\\/?#]+).*/i, '$1') }}/sitemap.xml",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 12000
+        }
+      },
+      "id": "8e032278-2836-4712-9a8c-6cfabe35e687",
+      "name": "Fetch Sitemap",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        672,
+        0
+      ],
+      "retryOnFail": true,
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Draft Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get New Prospects",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get New Prospects": {
+      "main": [
+        [
+          {
+            "node": "Fetch Company Website",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build AI Context": {
+      "main": [
+        [
+          {
+            "node": "Research & Draft Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research & Draft Email": {
+      "main": [
+        [
+          {
+            "node": "Prepare Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-5 mini": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research & Draft Email",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draft JSON Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Research & Draft Email",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Update": {
+      "main": [
+        [
+          {
+            "node": "Fit Score >= 60?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fit Score >= 60?": {
+      "main": [
+        [
+          {
+            "node": "Save Draft (Ready)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Save (Disqualified)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Contact Page": {
+      "main": [
+        [
+          {
+            "node": "Fetch Contact Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Contact Page": {
+      "main": [
+        [
+          {
+            "node": "Fetch Team Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Team Page": {
+      "main": [
+        [
+          {
+            "node": "Build AI Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Company Website": {
+      "main": [
+        [
+          {
+            "node": "Fetch Sitemap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Sitemap": {
+      "main": [
+        [
+          {
+            "node": "Find Contact Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}
