@@ -1,32 +1,43 @@
 # Drive folder → vector store, kept current
 
-_Status: documented. Workflow JSON not yet published._
+_Status: **published**. [`drive-to-vector-store.json`](./drive-to-vector-store.json), 11 nodes._
 
 ## What it does
 
 Most RAG demos index a folder once. The interesting part is the second run: what
 happens when a file is edited, or when nothing has changed. This pattern walks a
-Drive folder on a schedule, compares what it finds against what the vector store
-already holds, and upserts only what is new or changed, so an edited document
-replaces its own vectors instead of sitting alongside a stale copy.
+Drive folder on a schedule and, for every readable document, deletes that file's
+previous passages before writing the new ones, so an edited document replaces its
+own vectors instead of sitting alongside a stale copy of itself.
+
+## Import
+
+```
+n8n → Workflows → Import from file → drive-to-vector-store.json
+```
+
+Then fill in three placeholders and attach three credentials:
+
+| Placeholder | Where | What to put |
+|---|---|---|
+| `YOUR_DRIVE_FOLDER_ID` | List folder files | The folder id from its Drive URL |
+| `YOUR_INDEX_NAME` | Index the passages | Your Pinecone index name |
+| `YOUR_INDEX_HOST` | Delete previous chunks | Your index host, e.g. `my-index-abc123.svc.us-east-1-aws.pinecone.io` |
 
 ## Nodes, in order
 
 | Node | Does | Notes |
 |---|---|---|
-| Schedule Trigger | Runs the pass on an interval | Hourly is usually enough |
-| Search files and folders | Lists the folder's files with modified times | The source of truth for "what exists" |
-| Vector store: query | Asks what is already indexed | Runs in parallel with the listing |
-| Embeddings (query side) | Required by the vector store node | Same model as the write side |
-| Merge | Joins the two lists on file id | Left side files, right side index state |
-| If: new or changed | Compares modified time against indexed time | Unchanged files stop here |
-| If: supported type | Splits documents from anything unreadable | Unsupported types go to a No-Op |
-| Download file | Fetches the binary | `retryOnFail` |
-| HTTP Request | Extraction or conversion for types Drive will not export directly | `retryOnFail`, `continueRegularOutput` |
-| Merge | Rejoins the extracted text with its metadata | |
-| Data Loader | Splits the text into overlapping passages | Chunk size and overlap live here |
-| Embeddings (write side) | Embeds each passage | |
-| Vector store: upsert | Writes passages keyed by file id | The key is what makes an edit replace rather than duplicate |
+| Every hour | Runs the pass on a schedule | Hourly by default; the interval is the only thing tying this to "how fresh" |
+| List folder files | Lists every file in the folder with its full metadata | `returnAll`, `fields: *`, so `modifiedTime` and `mimeType` come back |
+| Readable document? | Splits documents the loader can read from everything else | PDF, Google Doc, .docx and plain text on the true branch |
+| Skip unreadable file | Absorbs the rest | A spreadsheet or image ends the run for that item, not the batch |
+| Download file | Fetches the binary | Google Docs are exported as plain text on the way out |
+| Delete previous chunks | Deletes this file's existing vectors by `fileId` | **The node that matters.** Continues on error, because a first-time file has nothing to delete |
+| Index the passages | Embeds and writes the new passages | `insert` mode into the `documents` namespace |
+| Embeddings | Turns each passage into a vector | `text-embedding-3-small` |
+| Read the document | Reads the binary and attaches `fileId` and `fileName` as metadata | The metadata is what the delete step filters on next run |
+| Split into passages | 1000 characters, 200 overlap | Overlap keeps sentences from being cut mid-thought |
 
 ## Credentials you need
 
@@ -36,7 +47,8 @@ replaces its own vectors instead of sitting alongside a stale copy.
 
 ## Sample data
 
-`sample/` will hold a few public PDFs so the pass runs end to end on import.
+Point it at any Drive folder with a few documents in it. There is nothing to seed:
+the workflow discovers whatever is in the folder.
 
 ## Error handling
 
@@ -44,6 +56,14 @@ The download and extraction calls retry, and extraction continues on error so on
 unreadable file does not abandon the rest of the batch. The upsert does **not**
 continue on error: a passage that fails to write should fail loudly, because a
 partial index is the failure mode nobody notices.
+
+## Why the delete step exists
+
+Most published RAG ingestion flows index a folder once. The interesting run is the
+second one. Without the delete, editing a document leaves its old passages in the
+index next to the new ones, and the assistant starts answering from a version of
+the document that no longer exists. Deleting by `fileId` first is what makes an
+edit a replacement.
 
 ## Measured result
 
