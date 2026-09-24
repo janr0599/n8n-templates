@@ -1,0 +1,755 @@
+{
+  "name": "Create lead record",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "email"
+            },
+            {
+              "name": "fullName"
+            },
+            {
+              "name": "bottleneck"
+            },
+            {
+              "name": "companyName"
+            },
+            {
+              "name": "source"
+            },
+            {
+              "name": "prospectId"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c8ff3189-34a8-44a9-8332-bf28020abf30",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Sales",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "YOUR_COMPANIES_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Companies",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID/YOUR_COMPANIES_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Status": "Prospect",
+            "Account Manager": "=YOUR_EMAIL",
+            "Industry": "Legal",
+            "Contacts": "={{[$json.id]}}",
+            "Company Name": "={{ $('When Executed by Another Workflow').item.json.companyName }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Company Name",
+              "displayName": "Company Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Website",
+              "displayName": "Website",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Industry",
+              "displayName": "Industry",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Legal",
+                  "value": "Legal"
+                },
+                {
+                  "name": "Technology",
+                  "value": "Technology"
+                },
+                {
+                  "name": "Healthcare",
+                  "value": "Healthcare"
+                },
+                {
+                  "name": "Finance",
+                  "value": "Finance"
+                },
+                {
+                  "name": "Manufacturing",
+                  "value": "Manufacturing"
+                },
+                {
+                  "name": "Other",
+                  "value": "Other"
+                },
+                {
+                  "name": "Food & Beverage",
+                  "value": "Food & Beverage"
+                },
+                {
+                  "name": "Real Estate",
+                  "value": "Real Estate"
+                },
+                {
+                  "name": "Energy",
+                  "value": "Energy"
+                },
+                {
+                  "name": "Media & Entertainment",
+                  "value": "Media & Entertainment"
+                },
+                {
+                  "name": "Environmental Services",
+                  "value": "Environmental Services"
+                },
+                {
+                  "name": "Logistics",
+                  "value": "Logistics"
+                },
+                {
+                  "name": "Education",
+                  "value": "Education"
+                },
+                {
+                  "name": "Retail",
+                  "value": "Retail"
+                },
+                {
+                  "name": "Fitness",
+                  "value": "Fitness"
+                },
+                {
+                  "name": "Consulting",
+                  "value": "Consulting"
+                },
+                {
+                  "name": "Security",
+                  "value": "Security"
+                },
+                {
+                  "name": "Transportation",
+                  "value": "Transportation"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Practice Area",
+              "displayName": "Practice Area",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Immigration",
+                  "value": "Immigration"
+                },
+                {
+                  "name": "Family Law",
+                  "value": "Family Law"
+                },
+                {
+                  "name": "Personal Injury",
+                  "value": "Personal Injury"
+                },
+                {
+                  "name": "Corporate Law",
+                  "value": "Corporate Law"
+                },
+                {
+                  "name": "Elder Law",
+                  "value": "Elder Law"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Size",
+              "displayName": "Size",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "1-10",
+                  "value": "1-10"
+                },
+                {
+                  "name": "11-20",
+                  "value": "11-20"
+                },
+                {
+                  "name": "21-50",
+                  "value": "21-50"
+                },
+                {
+                  "name": "50+",
+                  "value": "50+"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Active",
+                  "value": "Active"
+                },
+                {
+                  "name": "Prospect",
+                  "value": "Prospect"
+                },
+                {
+                  "name": "Closed",
+                  "value": "Closed"
+                },
+                {
+                  "name": "Inactive",
+                  "value": "Inactive"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Address",
+              "displayName": "Address",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Contacts",
+              "displayName": "Contacts",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Projects",
+              "displayName": "Projects",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created Time",
+              "displayName": "Created Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Account Manager",
+              "displayName": "Account Manager",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Meetings",
+              "displayName": "Meetings",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        384,
+        0
+      ],
+      "id": "54c05b0b-1b13-47c0-915e-4972da3a9082",
+      "name": "Create Company Record",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Sales",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "YOUR_LEADS_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID/YOUR_LEADS_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Email": "={{ $json.email.toLowerCase() }}",
+            "Lead Name": "={{ $json.fullName }}",
+            "Bottleneck": "={{ $json.bottleneck }}",
+            "Lead Status": "Contacted",
+            "Last Contacted": "={{ $now }}",
+            "Owner": "YOUR_EMAIL",
+            "Source": "={{$json.source}}",
+            "Prospects": "={{ $json.prospectId ? [$json.prospectId] : [] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Lead Name",
+              "displayName": "Lead Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Lead Status",
+              "displayName": "Lead Status",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "New",
+                  "value": "New"
+                },
+                {
+                  "name": "Contacted",
+                  "value": "Contacted"
+                },
+                {
+                  "name": "Qualified",
+                  "value": "Qualified"
+                },
+                {
+                  "name": "Unqualified",
+                  "value": "Unqualified"
+                },
+                {
+                  "name": "Converted",
+                  "value": "Converted"
+                },
+                {
+                  "name": "Lost",
+                  "value": "Lost"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "Website Contact Form",
+                  "value": "Website Contact Form"
+                },
+                {
+                  "name": "Booking Page",
+                  "value": "Booking Page"
+                },
+                {
+                  "name": "Website Chat",
+                  "value": "Website Chat"
+                },
+                {
+                  "name": "Email",
+                  "value": "Email"
+                },
+                {
+                  "name": "WhatsApp",
+                  "value": "WhatsApp"
+                },
+                {
+                  "name": "Phone",
+                  "value": "Phone"
+                },
+                {
+                  "name": "Instagram",
+                  "value": "Instagram"
+                },
+                {
+                  "name": "Messenger",
+                  "value": "Messenger"
+                },
+                {
+                  "name": "SMS",
+                  "value": "SMS"
+                },
+                {
+                  "name": "Website Newsletter Form",
+                  "value": "Website Newsletter Form"
+                },
+                {
+                  "name": "Website",
+                  "value": "Website"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Bottleneck",
+              "displayName": "Bottleneck",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Company",
+              "displayName": "Company",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Created Time",
+              "displayName": "Created Time",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Last Contacted",
+              "displayName": "Last Contacted",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Owner",
+              "displayName": "Owner",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Meetings",
+              "displayName": "Meetings",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Meetings Count",
+              "displayName": "Meetings Count",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Days Since Creation",
+              "displayName": "Days Since Creation",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Follow-Up Stage",
+              "displayName": "Follow-Up Stage",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "options",
+              "options": [
+                {
+                  "name": "None",
+                  "value": "None"
+                },
+                {
+                  "name": "Stage 1 Sent",
+                  "value": "Stage 1 Sent"
+                },
+                {
+                  "name": "Stage 2 Sent",
+                  "value": "Stage 2 Sent"
+                },
+                {
+                  "name": "Stage 3 Sent",
+                  "value": "Stage 3 Sent"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Company Name",
+              "displayName": "Company Name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "Unsubscribed",
+              "displayName": "Unsubscribed",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "boolean",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Communication Log",
+              "displayName": "Communication Log",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": true
+            },
+            {
+              "id": "Prospects",
+              "displayName": "Prospects",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        192,
+        0
+      ],
+      "id": "0edf37f9-6491-425a-834f-7870edecd417",
+      "name": "Create Lead record",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "contacts",
+        "operation": "create",
+        "email": "={{$('When Executed by Another Workflow').item.json.email}}",
+        "contactCreateFields": {
+          "firstName": "={{ $('When Executed by Another Workflow').item.json.fullName\n  .replace(/\\s*\\(.*?\\)\\s*/g, '')\n  .trim()\n  .split(' ')[0] \n}}\n",
+          "lastName": "={{\n  (() => {\n    const parts = $('When Executed by Another Workflow').item.json.fullName\n      .replace(/\\s*\\(.*?\\)\\s*/g, '')\n      .trim()\n      .split(' ');\n\n    return parts.length >= 4 \n      ? parts[2] \n      : parts[parts.length - 1];\n  })()\n}}",
+          "segments": {
+            "segments": [
+              {
+                "id": "YOUR_RESEND_AUDIENCE_ID"
+              }
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-resend.resend",
+      "typeVersion": 1,
+      "position": [
+        576,
+        0
+      ],
+      "id": "fb51e66a-8f18-44b1-b5be-d6af128cca8f",
+      "name": "Create a new contact",
+      "retryOnFail": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Create Lead record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Lead record": {
+      "main": [
+        [
+          {
+            "node": "Create Company Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Company Record": {
+      "main": [
+        [
+          {
+            "node": "Create a new contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}

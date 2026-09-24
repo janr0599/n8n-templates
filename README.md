@@ -27,7 +27,7 @@ AI engineer. Case studies for the production systems these come from are in the
 | 02 | [Scheduled reminders with Data Table dedupe](./02-scheduled-reminders-data-table-dedupe) | 48 / 24 / 1 h reminders that never double-send | ✅ | — |
 | 03 | [Chat intake agent with human handoff](./03-chat-intake-agent-human-handoff) | Agent, memory, message buffering, tools, and a classifier that hands off to a person | ✅ | — |
 | 04 | [Drive folder → vector store, kept current](./04-drive-to-vector-store-upsert) | RAG ingestion where an edited file replaces its own vectors instead of duplicating | ✅ | [✅](./04-drive-to-vector-store-upsert/drive-to-vector-store.json) |
-| 05 | [Agent tools over MCP](./05-agent-tools-over-mcp) | Expose workflows as callable tools any MCP client can use | ✅ | — |
+| 05 | [Agent tools over MCP](./05-agent-tools-over-mcp) | Expose workflows as callable tools any MCP client can use | ✅ | [✅](./05-agent-tools-over-mcp) |
 | 06 | [Prospect research and first-touch draft](./06-prospect-research-and-draft) | Research a company, score fit, draft the email, and never let the model pick the address unchecked | ✅ | [✅](./06-prospect-research-and-draft/prospect-research-and-draft.json) |
 
 Each folder's README covers the node order, the credentials to create, the error

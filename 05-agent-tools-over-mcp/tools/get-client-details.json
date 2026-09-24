@@ -1,0 +1,329 @@
+{
+  "name": "Get client details",
+  "nodes": [
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "email"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -592,
+        96
+      ],
+      "id": "c1da1a51-7c10-4580-b624-285a92bece2d",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "92b8d39f-ffdc-4bfe-9477-576907a28ac3",
+              "leftValue": "={{ $json.fields.Email }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -208,
+        96
+      ],
+      "id": "aa522c13-cb3f-416e-a0b8-61cfff3f7780",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "6ca6414a-39cb-4ee9-8250-f753f14ebf35",
+              "leftValue": "={{ $json.fields['Lead Email'][0] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        192,
+        16
+      ],
+      "id": "55a1f233-0a95-40fd-b6d2-8e385d7e4c8e",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5c8dc1cb-0b90-4363-b0c9-e86713560ef0",
+              "name": "message",
+              "value": "This is a new client, they don't exist in the CRM.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        192
+      ],
+      "id": "99ad412e-02dc-4b52-ad2e-7df78c0d50d4",
+      "name": "New Client Message"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Sales",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "YOUR_MEETINGS_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Meetings",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID/YOUR_MEETINGS_TABLE_ID"
+        },
+        "filterByFormula": "=AND({Lead Email} = '{{ $('Search Lead Record').item.json.fields.Email.toLowerCase() }}', {Status} = 'Scheduled')",
+        "options": {},
+        "sort": {
+          "property": [
+            {
+              "field": "Date & Time",
+              "direction": "desc"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        16
+      ],
+      "id": "9b3f57e6-6c52-4261-8460-07e1b83d7608",
+      "name": "Get Meetings Info",
+      "alwaysOutputData": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "YOUR_AIRTABLE_BASE_ID",
+          "mode": "list",
+          "cachedResultName": "Sales",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "value": "YOUR_LEADS_TABLE_ID",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": "https://airtable.com/YOUR_AIRTABLE_BASE_ID/YOUR_LEADS_TABLE_ID"
+        },
+        "filterByFormula": "={Email} = '{{ $json.email.toLowerCase() }}'",
+        "returnAll": false,
+        "limit": 1,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -400,
+        96
+      ],
+      "id": "7a6ea410-358a-4448-8353-9a20813ffb91",
+      "name": "Search Lead Record",
+      "alwaysOutputData": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b134f4e0-755d-46ca-aed5-0ac130407bd7",
+              "name": "message",
+              "value": "This client exists in the CRM. However, he or she has no previous appointments with the agency.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        128
+      ],
+      "id": "6d031733-8656-4751-843e-e5780842ad86",
+      "name": "Existing Client No Meetings Message"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ef01189b-a1b4-4b66-a2b8-8729a0f5b492",
+              "name": "Meeting Name",
+              "value": "={{ $json.fields['Meeting Name'] }}",
+              "type": "string"
+            },
+            {
+              "id": "215f1a66-ae52-4e88-831c-739f29f91e09",
+              "name": "Date & Time EST",
+              "value": "={{ DateTime.fromISO($json.fields['Date & Time']).setZone('America/New_York').toFormat('MMMM d, yyyy h:mm a') }}",
+              "type": "string"
+            },
+            {
+              "id": "d1b7cf9e-ab28-42dc-8899-d42eee77f0df",
+              "name": "Calendar Event ID",
+              "value": "={{ $json.fields['Calendar Event ID'] }}",
+              "type": "string"
+            },
+            {
+              "id": "38ef2380-dd94-4f86-9fa8-56e0f05b7452",
+              "name": "User Email",
+              "value": "={{ $json.fields['Lead Email'][0] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        400,
+        -80
+      ],
+      "id": "63840c23-2c7f-4f95-bcf1-ff447d0fc756",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Search Lead Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Get Meetings Info",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "New Client Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Existing Client No Meetings Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Lead Record": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Meetings Info": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}
