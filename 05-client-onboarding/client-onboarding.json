@@ -1,0 +1,912 @@
+{
+  "name": "Client onboarding",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyX",
+              "value": 15,
+              "unit": "minutes"
+            }
+          ]
+        },
+        "authentication": "airtableTokenApi",
+        "baseId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "tableId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_CLIENTS_TABLE_ID"
+        },
+        "triggerField": "Last Modified",
+        "additionalFields": {}
+      },
+      "id": "7f20b5a6-7ad5-4bd2-90ba-4f1433f5f841",
+      "name": "Client row changed",
+      "type": "n8n-nodes-base.airtableTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.fields[\"Onboarding Status\"] }}",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              },
+              "rightValue": "Ready to onboard"
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ca650688-ed05-4be4-bc27-b92211f2ac95",
+      "name": "Ready to onboard?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        224,
+        256
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "row",
+              "name": "rowId",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "cn",
+              "name": "clientName",
+              "value": "={{ $json.fields[\"Client Name\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "ce",
+              "name": "contactEmail",
+              "value": "={{ $json.fields[\"Contact Email\"].toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "ct",
+              "name": "contactName",
+              "value": "={{ $json.fields[\"Contact Name\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "sp",
+              "name": "servicePlan",
+              "value": "={{ $json.fields[\"Service Plan\"] || \"Standard\" }}",
+              "type": "string"
+            },
+            {
+              "id": "ag",
+              "name": "agreementFileId",
+              "value": "={{ $json.fields[\"Signed Agreement File Id\"] || \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f95acfaf-20da-460a-be51-da75c21c7705",
+      "name": "Client details",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        240
+      ],
+      "notes": "Every node below reads from here by name, so the field names in your table are changed in one place."
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_CLIENTS_TABLE_ID"
+        },
+        "filterByFormula": "={{ \"AND({Contact Email} = '\" + $json.contactEmail + \"', {Onboarded} = 1)\" }}",
+        "returnAll": false,
+        "limit": 1,
+        "options": {}
+      },
+      "id": "60a16006-b8aa-4e1a-848f-939249655243",
+      "name": "Find existing client",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        672,
+        240
+      ],
+      "retryOnFail": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.id }}",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "733a4071-d7e0-498a-b5f6-a7b06cfd6d74",
+      "name": "Client already onboarded?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "tc",
+              "name": "timeTrackerClientId",
+              "value": "={{ $json.fields[\"Time Tracker Client Id\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e0e34cbc-2964-46b3-a4dd-2f89c2cdc9fd",
+      "name": "Reuse the existing client",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1232,
+        128
+      ],
+      "notes": "The re-run path. Nothing is created; the ids already on the row are carried forward."
+    },
+    {
+      "parameters": {},
+      "id": "91d6ed3b-c15d-4483-b0f8-4934bf90bb31",
+      "name": "Client ready",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1568,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_CLIENTS_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "id"
+          ],
+          "value": {
+            "id": "={{ $('Client details').item.json.rowId }}",
+            "Onboarded": true
+          }
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "a5d5d83d-ed76-40ef-bcfd-c55843e620d0",
+      "name": "Create client record",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        288
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "client",
+        "workspaceId": "YOUR_CLOCKIFY_WORKSPACE_ID",
+        "name": "={{ $('Client details').item.json.clientName }}"
+      },
+      "id": "c3791a9e-2492-4309-884b-4c497a75e71a",
+      "name": "Create time tracker client",
+      "type": "n8n-nodes-base.clockify",
+      "typeVersion": 1,
+      "position": [
+        1344,
+        288
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "workspaceId": "YOUR_CLOCKIFY_WORKSPACE_ID",
+        "name": "={{ $('Client details').item.json.clientName }} - {{ $('Client details').item.json.servicePlan }}",
+        "additionalFields": {
+          "billable": true,
+          "isPublic": true
+        }
+      },
+      "id": "3513b04e-7ac6-496f-bca9-19451ed10382",
+      "name": "Create the onboarding project",
+      "type": "n8n-nodes-base.clockify",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        240
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "task",
+        "operation": "getAll",
+        "workspaceId": "YOUR_CLOCKIFY_WORKSPACE_ID",
+        "projectId": "YOUR_TEMPLATE_PROJECT_ID",
+        "returnAll": true,
+        "filters": {
+          "sort-column": "NAME",
+          "sort-order": "ASCENDING"
+        }
+      },
+      "id": "ba7f737b-117d-47cf-ac51-b9cb47291422",
+      "name": "Read the task template",
+      "type": "n8n-nodes-base.clockify",
+      "typeVersion": 1,
+      "position": [
+        2016,
+        240
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "folder",
+        "name": "={{ $('Client details').item.json.clientName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_CLIENTS_PARENT_FOLDER_ID"
+        },
+        "options": {}
+      },
+      "id": "8a96933c-3b64-4e84-ad22-f9af74b75d7c",
+      "name": "Create the client folder",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2464,
+        96
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Client details').item.json.agreementFileId }}",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a5ecc6bd-da4a-4c02-b72f-e12653c304a3",
+      "name": "Agreement on file?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2688,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Client details').item.json.agreementFileId }}"
+        },
+        "name": "={{ $('Client details').item.json.clientName }} - Signed agreement",
+        "sameFolder": false,
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create the client folder').item.json.id }}"
+        },
+        "options": {}
+      },
+      "id": "2dfd778c-c1bb-4f1a-8a61-b10174201bad",
+      "name": "File the signed agreement",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2912,
+        0
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {},
+      "id": "5f682840-3136-4fba-9b3c-1e375cbda3ec",
+      "name": "Agreement handled",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3136,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "createFromText",
+        "content": "={{ \"No signed agreement was on file for \" + $('Client details').item.json.clientName + \" when onboarding ran on \" + $now.toISO() + \". Replace this file once it is signed.\" }}",
+        "name": "AGREEMENT MISSING.txt",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create the client folder').item.json.id }}"
+        },
+        "options": {}
+      },
+      "id": "f3934570-7c71-4697-9ba2-f83af2d5c676",
+      "name": "Leave a placeholder instead",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        2912,
+        192
+      ],
+      "retryOnFail": true,
+      "notes": "A missing agreement must not abandon the run. The folder is still built and the gap is visible inside it."
+    },
+    {
+      "parameters": {
+        "resource": "task",
+        "workspaceId": "YOUR_CLOCKIFY_WORKSPACE_ID",
+        "projectId": "={{ $('Create the onboarding project').item.json.id }}",
+        "name": "={{ $json.name }}",
+        "additionalFields": {}
+      },
+      "id": "70ec7bd8-2dad-4a69-8e47-a9a0b200b553",
+      "name": "Copy task onto the project",
+      "type": "n8n-nodes-base.clockify",
+      "typeVersion": 1,
+      "position": [
+        2464,
+        288
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "02b3bee7-883d-4a17-a84e-240766359475",
+      "name": "For each template task",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2240,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "copy",
+        "fileId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_WELCOME_LETTER_TEMPLATE_ID"
+        },
+        "name": "={{ $('Client details').item.json.clientName }} - Welcome",
+        "sameFolder": false,
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Create the client folder').item.json.id }}"
+        },
+        "options": {}
+      },
+      "id": "fb37dcff-32b1-4ff1-bbe2-65d68ef7f085",
+      "name": "Copy the welcome letter template",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        3360,
+        96
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentURL": "={{ $json.id }}",
+        "actionsUi": {
+          "actionFields": [
+            {
+              "action": "replaceAll",
+              "text": "[[client_name]]",
+              "replaceText": "={{ $('Client details').item.json.clientName }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "[[contact_name]]",
+              "replaceText": "={{ $('Client details').item.json.contactName }}"
+            },
+            {
+              "action": "replaceAll",
+              "text": "[[service_plan]]",
+              "replaceText": "={{ $('Client details').item.json.servicePlan }}"
+            }
+          ]
+        }
+      },
+      "id": "b7e11ead-f4f9-4c34-8e71-10669fb639a5",
+      "name": "Fill in the welcome letter",
+      "type": "n8n-nodes-base.googleDocs",
+      "typeVersion": 2,
+      "position": [
+        3584,
+        96
+      ],
+      "retryOnFail": true,
+      "notes": "The template document holds [[client_name]], [[contact_name]] and [[service_plan]] as literal text. Each is replaced here."
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Client details').item.json.contactEmail }}",
+        "subject": "=Welcome aboard, {{ $('Client details').item.json.clientName }}",
+        "message": "=<p>Hi {{ $('Client details').item.json.contactName }},</p><p>Your account is set up and your onboarding checklist is ready. Your welcome letter is here:</p><p><a href=\"https://docs.google.com/document/d/{{ $('Copy the welcome letter template').item.json.id }}/edit\">Open your welcome letter</a></p><p>We will be in touch with the first step shortly.</p>",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "YOUR_SENDER_NAME"
+        }
+      },
+      "id": "9e28a9a2-cc9c-4e43-940a-3a51cbc9742a",
+      "name": "Send the welcome email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        3808,
+        96
+      ],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_CLIENTS_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "id"
+          ],
+          "value": {
+            "id": "={{ $('Client details').item.json.rowId }}",
+            "Onboarding Status": "Onboarded",
+            "Onboarded": true,
+            "Client Folder Id": "={{ $('Create the client folder').item.json.id }}",
+            "Time Tracker Project Id": "={{ $('Create the onboarding project').item.json.id }}"
+          }
+        },
+        "options": {
+          "typecast": true
+        }
+      },
+      "id": "eef7ce79-6816-4eb5-b509-dc6309528029",
+      "name": "Mark the row onboarded",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        4032,
+        96
+      ],
+      "retryOnFail": true,
+      "notes": "Writing the status last is what makes a re-run safe: a crash anywhere above leaves the row Ready to onboard, and the next poll picks it up again."
+    },
+    {
+      "parameters": {
+        "content": "## Safe to re-run\nThe status field is written **last**. A failure anywhere above leaves the row as `Ready to onboard`, so the next poll retries it. The lookup before the create is what stops that retry duplicating the client.",
+        "height": 176,
+        "width": 336,
+        "color": 4
+      },
+      "id": "a518f194-4f17-4fdd-a604-7f65d1a46236",
+      "name": "Sticky Note b0ddbb7e",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        144,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Onboarding steps are data\nThe checklist lives in a template project in the time tracker, not in this workflow. Change the steps there and the next client gets them. No redeploy.",
+        "height": 176,
+        "width": 352,
+        "color": 5
+      },
+      "id": "283978e2-67fb-4c9f-812e-c3fd4174075d",
+      "name": "Sticky Note 2b71eb5b",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1744,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## The missing agreement\nMost onboarding flows assume the paperwork is signed. This one writes a visible placeholder into the folder instead of failing, so the rest of the setup still completes.",
+        "height": 176,
+        "width": 368,
+        "color": 3
+      },
+      "id": "4bc63359-8f8b-4be0-9e2b-b75f0c3c52d9",
+      "name": "Sticky Note 1ff5cc7b",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        432
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Client row changed": {
+      "main": [
+        [
+          {
+            "node": "Ready to onboard?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ready to onboard?": {
+      "main": [
+        [
+          {
+            "node": "Client details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client details": {
+      "main": [
+        [
+          {
+            "node": "Find existing client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find existing client": {
+      "main": [
+        [
+          {
+            "node": "Client already onboarded?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client already onboarded?": {
+      "main": [
+        [
+          {
+            "node": "Reuse the existing client",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create client record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reuse the existing client": {
+      "main": [
+        [
+          {
+            "node": "Client ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Client ready": {
+      "main": [
+        [
+          {
+            "node": "Create the onboarding project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create client record": {
+      "main": [
+        [
+          {
+            "node": "Create time tracker client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create time tracker client": {
+      "main": [
+        [
+          {
+            "node": "Client ready",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create the onboarding project": {
+      "main": [
+        [
+          {
+            "node": "Read the task template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read the task template": {
+      "main": [
+        [
+          {
+            "node": "For each template task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create the client folder": {
+      "main": [
+        [
+          {
+            "node": "Agreement on file?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agreement on file?": {
+      "main": [
+        [
+          {
+            "node": "File the signed agreement",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Leave a placeholder instead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "File the signed agreement": {
+      "main": [
+        [
+          {
+            "node": "Agreement handled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Agreement handled": {
+      "main": [
+        [
+          {
+            "node": "Copy the welcome letter template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Leave a placeholder instead": {
+      "main": [
+        [
+          {
+            "node": "Agreement handled",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Copy task onto the project": {
+      "main": [
+        [
+          {
+            "node": "For each template task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "For each template task": {
+      "main": [
+        [
+          {
+            "node": "Create the client folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Copy task onto the project",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Copy the welcome letter template": {
+      "main": [
+        [
+          {
+            "node": "Fill in the welcome letter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fill in the welcome letter": {
+      "main": [
+        [
+          {
+            "node": "Send the welcome email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send the welcome email": {
+      "main": [
+        [
+          {
+            "node": "Mark the row onboarded",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}

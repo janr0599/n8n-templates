@@ -16,11 +16,11 @@ sides of the model, and three separate routes to a human.
 
 ## Import
 
-Import [template 05](../05-agent-tools-over-mcp) first. This agent calls its six
+Import [template 03](../03-agent-tools-over-mcp) first. This agent calls its six
 sub-workflows as tools, and they have to exist before you can point at them.
 
 ```
-n8n → Import from file → ../05-agent-tools-over-mcp/tools/*.json
+n8n → Import from file → ../03-agent-tools-over-mcp/tools/*.json
 n8n → Import from file → notify-human-and-pause-bot.json
 n8n → Import from file → chat-agent.json
 ```
@@ -117,7 +117,7 @@ agent reads that flag, so the bot stops replying in that conversation.
 
 OpenAI (chat, transcription, vision, embeddings, both guardrail models), Postgres
 for chat memory, Redis for the buffer, Pinecone for the knowledge base, Chatwoot
-header auth, Gmail for the handoff email. Plus whatever template 05's tools need.
+header auth, Gmail for the handoff email. Plus whatever template 03's tools need.
 
 ## The system prompt ships generalised
 
@@ -132,7 +132,7 @@ creating them; confirm the timezone before checking availability; fetch the even
 via `get_client_details` before rescheduling or cancelling. That ordering is what
 stops an agent double-creating records and booking into the past.
 
-One small note: `create_lead_record` in template 05 also accepts a `prospectId`,
+One small note: `create_lead_record` in template 03 also accepts a `prospectId`,
 which links a new lead back to a cold-outreach prospect row. The chat agent does not
 send it, and the sub-workflow handles its absence.
 

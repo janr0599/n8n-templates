@@ -1,7 +1,7 @@
 <h1>n8n templates</h1>
 
 <p>
-  <img alt="Patterns" src="https://img.shields.io/badge/patterns-4-d4702c?style=flat-square&labelColor=131313">
+  <img alt="Patterns" src="https://img.shields.io/badge/patterns-5-d4702c?style=flat-square&labelColor=131313">
   <img alt="n8n" src="https://img.shields.io/badge/n8n-self--hosted-131313?style=flat-square&labelColor=131313&color=8c8c86">
   <img alt="Credentials" src="https://img.shields.io/badge/credentials-none%20in%20repo-8c8c86?style=flat-square&labelColor=131313">
   <img alt="Client data" src="https://img.shields.io/badge/client%20data-none%2C%20ever-8c8c86?style=flat-square&labelColor=131313">
@@ -23,14 +23,15 @@ AI engineer. Case studies for the production systems these come from are in the
 
 | # | Pattern | What it solves | Docs | JSON |
 |---|---|---|:--:|:--:|
-| 03 | [Chat intake agent with human handoff](./03-chat-intake-agent-human-handoff) | Agent, memory, message buffering, tools, and a classifier that hands off to a person | ✅ | [✅](./03-chat-intake-agent-human-handoff) |
-| 04 | [Drive folder → vector store, kept current](./04-drive-to-vector-store-upsert) | RAG ingestion where an edited file replaces its own vectors instead of duplicating | ✅ | [✅](./04-drive-to-vector-store-upsert/drive-to-vector-store.json) |
-| 05 | [Agent tools over MCP](./05-agent-tools-over-mcp) | Expose workflows as callable tools any MCP client can use | ✅ | [✅](./05-agent-tools-over-mcp) |
-| 06 | [Prospect research and first-touch draft](./06-prospect-research-and-draft) | Research a company, score fit, draft the email, and never let the model pick the address unchecked | ✅ | [✅](./06-prospect-research-and-draft/prospect-research-and-draft.json) |
+| 01 | [Chat intake agent with human handoff](./01-chat-intake-agent-human-handoff) | Agent, memory, message buffering, tools, and a classifier that hands off to a person | ✅ | [✅](./01-chat-intake-agent-human-handoff) |
+| 02 | [Drive folder → vector store, kept current](./02-drive-to-vector-store-upsert) | RAG ingestion where an edited file replaces its own vectors instead of duplicating | ✅ | [✅](./02-drive-to-vector-store-upsert/drive-to-vector-store.json) |
+| 03 | [Agent tools over MCP](./03-agent-tools-over-mcp) | Expose workflows as callable tools any MCP client can use | ✅ | [✅](./03-agent-tools-over-mcp) |
+| 04 | [Prospect research and first-touch draft](./04-prospect-research-and-draft) | Research a company, score fit, draft the email, and never let the model pick the address unchecked | ✅ | [✅](./04-prospect-research-and-draft/prospect-research-and-draft.json) |
+| 05 | [Client onboarding](./05-client-onboarding) | A signed client becomes a project, a checklist, a folder and a welcome letter, and a re-run cannot duplicate any of it | ✅ | [✅](./05-client-onboarding/client-onboarding.json) |
 
-Each folder's README covers the node order, the credentials to create, the error
-handling and the measured result from the production build it came from. Templates 03
-and 05 compose: the chat agent calls the MCP tools, so import 05 first.
+Each folder's README covers the node order, the credentials to create and the error
+handling. Templates 01 and 03 compose: the chat agent calls the MCP tools as its
+appointment tools, so import 03 first.
 
 ## Conventions
 

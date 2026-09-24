@@ -49,7 +49,7 @@ and `onError` flags and the code nodes as built.
 **Do not rebuild a published workflow inside the instance to get a clean copy.**
 n8n auto-attaches the most recently edited credential of each type to a new
 workflow, even when the SDK asked for an empty placeholder. That is how a real
-Drive and Pinecone credential nearly went into template 04. A file export cannot
+Drive and Pinecone credential nearly went into template 02. A file export cannot
 do this, because the strip happens before anything is written.
 
 Read the original in full before replicating it. Node order is usually deliberate.
