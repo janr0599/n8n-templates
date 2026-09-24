@@ -47,6 +47,21 @@ not been published yet.
   export of a client workflow, and nothing here carries a client's name, record
   ids, addresses or prompts.
 
+## Publishing a new template
+
+The workflows live in an n8n instance with real credentials attached, because they
+are also used for demo recordings. n8n never exports secrets, but it does export
+the credential *reference* (id and display name) along with everything written in
+node names, notes and sticky text. So exports are sanitised before they land here:
+
+```
+python3 tools/clean-export.py raw-export.json 0X-pattern/workflow.json
+```
+
+It strips every credential block and refuses to write the file if anything
+identifying is still in it: an account name, an email address, a record id, a
+private hostname. Use `--allow` for strings that are genuinely safe.
+
 ## Importing
 
 Once a folder has its `.json`:
