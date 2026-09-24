@@ -1,0 +1,9 @@
+# Names that must never appear in a public template, one per line, lowercase.
+# Copy this to blocklist.local.txt and fill it in. That file is gitignored:
+# a blocklist committed to a public repo publishes exactly what it protects.
+#
+# Put here: your own company and domain, every client name, their trading
+# names, abbreviations and entity suffixes. Matching is a lowercase substring,
+# so "acme" also catches "AcmeCorp" and "acme-legal".
+your-company
+client-name

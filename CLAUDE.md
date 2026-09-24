@@ -1,17 +1,21 @@
 # n8n templates, public repo
 
 Public patterns at github.com/janr0599/n8n-templates, linked from the portfolio deck.
-Personal project of Javier Noguera Rodríguez. The n8n instance it draws from is the
-example production instance, so what may be published is decided by where a
-workflow came from, not by whether it is interesting.
+Personal project of Javier Noguera Rodríguez. The n8n instance it draws from is a
+production one carrying both agency and client work, so what may be published is
+decided by where a workflow came from, not by whether it is interesting.
+
+This file is public. Keep client names, workflow inventories and instance detail
+out of it; the blocklist in `tools/blocklist.local.txt` holds the names, and that
+file is gitignored.
 
 ## Origin decides what may be published
 
 | Origin | Modify the original? | Publish here? |
 |---|---|---|
-| example, published and live (Cold Outreach A-E, AI Voice Receptionist, AI Chat Customer Support, Social Media) | No. Export a copy and work on the file | Yes, after export, clean and generalise |
+| Own agency work, published and live | No. Export a copy and work on the file | Yes, after export, clean and generalise |
 | Already published to this repo (Drive to vector store) | No, leave it | Done |
-| Client-derived, copied to the instance (Demos folder: client onboarding, attorney email, intake agent) | Yes, they are his copies | **Ask first.** Client-owned logic is the TAA risk, and "generalised" is hardest to defend here |
+| Client-derived, copied to the instance | Yes, they are his copies | **Ask first.** Client-owned logic is the TAA risk, and "generalised" is hardest to defend here |
 | Built clean for this repo (Examples folder) | Yes | Yes |
 
 Never publish a workflow the client owns, however generalised. Describing the work

@@ -1,3 +1,6 @@
 *.json filter=
 # keep exports out by accident
 sample/*.local.json
+
+# the blocklist names clients; it never gets committed
+tools/blocklist.local.txt

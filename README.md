@@ -56,12 +56,17 @@ the credential *reference* (id and display name) along with everything written i
 node names, notes and sticky text. So exports are sanitised before they land here:
 
 ```
+cp tools/blocklist.example.txt tools/blocklist.local.txt   # first run only
 python3 tools/clean-export.py raw-export.json 0X-pattern/workflow.json
 ```
 
 It strips every credential block and refuses to write the file if anything
 identifying is still in it: an account name, an email address, a record id, a
 private hostname. Use `--allow` for strings that are genuinely safe.
+
+The list of names that must never appear lives in `tools/blocklist.local.txt`,
+which is gitignored, and the script refuses to run without it. A blocklist
+committed to a public repo would publish exactly what it is meant to protect.
 
 ## Importing
 
