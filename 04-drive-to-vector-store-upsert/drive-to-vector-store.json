@@ -6,7 +6,8 @@
         "rule": {
           "interval": [
             {
-              "field": "hours"
+              "field": "hours",
+              "hoursInterval": 1
             }
           ]
         }
@@ -23,7 +24,9 @@
     {
       "parameters": {
         "resource": "fileFolder",
+        "operation": "search",
         "searchMethod": "query",
+        "queryString": "",
         "returnAll": true,
         "filter": {
           "folderId": {
@@ -53,72 +56,186 @@
     },
     {
       "parameters": {
+        "mode": "load",
+        "pineconeIndex": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_INDEX_NAME"
+        },
+        "prompt": "={{ $json.name }}",
+        "topK": 1,
+        "includeDocumentMetadata": true,
+        "options": {
+          "pineconeNamespace": "documents",
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "file_id",
+                "value": "={{ $json.id }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "e3c5c9df-122a-4610-bf2a-09589fb7a38f",
+      "name": "Look up this file in the index",
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        432
+      ],
+      "notes": "The metadata filter is the lookup. The prompt is only there because load mode requires one.",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small"
+      },
+      "id": "3c841336-671a-4d92-b53d-c57269c62b3f",
+      "name": "Embeddings for lookup",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByFields",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "id",
+              "field2": "document.metadata.file_id"
+            }
+          ]
+        },
+        "joinMode": "keepEverything",
+        "options": {}
+      },
+      "id": "59f5082f-89c9-4e23-b84f-d7156d0c5683",
+      "name": "Pair file with index entry",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        800,
+        304
+      ],
+      "notes": "Left join. A file with no index entry comes out with an empty document."
+    },
+    {
+      "parameters": {
         "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.document }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ]
+        },
+        "looseTypeValidation": true
+      },
+      "id": "0879deea-0eeb-4c9c-8fab-592e295f21ff",
+      "name": "Never indexed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1024,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
           "options": {
             "caseSensitive": true,
             "leftValue": "",
             "typeValidation": "strict",
-            "version": 3
+            "version": 2
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.mimeType }}",
-              "rightValue": "application/pdf",
+              "leftValue": "={{ $('List folder files').item.json.modifiedTime }}",
+              "rightValue": "={{ $json.document.metadata.last_modified }}",
               "operator": {
-                "type": "string",
-                "operation": "equals"
-              },
-              "id": "df5b7bed-e339-46e4-a8e1-ab0addecd867"
-            },
-            {
-              "leftValue": "={{ $json.mimeType }}",
-              "rightValue": "application/vnd.google-apps.document",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              },
-              "id": "aec8f48f-97f7-4795-9996-c13c236b8f2c"
-            },
-            {
-              "leftValue": "={{ $json.mimeType }}",
-              "rightValue": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              },
-              "id": "fc890305-7504-4299-8567-5ce09ad4afd7"
-            },
-            {
-              "leftValue": "={{ $json.mimeType }}",
-              "rightValue": "text/plain",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              },
-              "id": "ca1ba0b5-8b4f-416f-86c7-535b42a74a8a"
+                "type": "dateTime",
+                "operation": "after"
+              }
             }
-          ],
-          "combinator": "or"
-        },
-        "options": {}
+          ]
+        }
       },
-      "id": "d3d2d30c-7acf-44f9-adf4-581bf8a27ffa",
-      "name": "Readable document?",
+      "id": "0d3855eb-8469-45fb-b8cb-9f06cb9fea25",
+      "name": "Changed since it was indexed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        448,
-        304
+        1248,
+        384
       ],
-      "notes": "Anything the loader cannot read is skipped rather than failing the run."
+      "notes": "Newer than the timestamp written at index time, or nothing happens."
+    },
+    {
+      "parameters": {},
+      "id": "5b96acff-5bce-42a5-9a26-934565c48f99",
+      "name": "Nothing to do",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        480
+      ],
+      "notes": "Already indexed and untouched. No download, no embedding, no write."
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_INDEX_HOST/vectors/delete",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ namespace: \"documents\", filter: { file_id: { $eq: $json.id } } }) }}"
+      },
+      "id": "97463929-394b-438d-bc94-0194cbdcda52",
+      "name": "Delete previous chunks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1472,
+        288
+      ],
+      "notes": "Only reached when the file exists in the index and has actually changed.",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "resource": "file",
         "operation": "download",
         "fileId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $json.id }}"
+          "value": "={{ $('List folder files').item.json.id }}"
         },
         "options": {
           "binaryPropertyName": "data",
@@ -134,38 +251,12 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        672,
+        1696,
         208
       ],
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR_INDEX_HOST/vectors/delete",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "pineconeApi",
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ namespace: \"documents\", filter: { fileId: { $eq: $json.id } } }) }}",
-        "options": {}
-      },
-      "id": "97463929-394b-438d-bc94-0194cbdcda52",
-      "name": "Delete previous chunks",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        896,
-        208
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "onError": "continueRegularOutput",
-      "notes": "This is what makes an edit replace rather than duplicate. A file indexed for the first time has nothing to delete, so the node continues on error."
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -175,6 +266,7 @@
           "mode": "id",
           "value": "YOUR_INDEX_NAME"
         },
+        "embeddingBatchSize": 1,
         "options": {
           "pineconeNamespace": "documents"
         }
@@ -184,37 +276,43 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1.3,
       "position": [
-        1120,
+        1920,
         208
       ]
     },
     {
       "parameters": {
-        "options": {}
+        "model": "text-embedding-3-small"
       },
-      "id": "45d3e94c-285d-4015-885b-80f67417334f",
-      "name": "Embeddings",
+      "id": "d1d04a77-98d2-452c-a640-95887eeef00a",
+      "name": "Embeddings for writing",
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        1136,
+        1936,
         432
       ]
     },
     {
       "parameters": {
         "dataType": "binary",
+        "binaryMode": "allInputData",
+        "loader": "auto",
         "textSplittingMode": "custom",
         "options": {
           "metadata": {
             "metadataValues": [
               {
-                "name": "fileId",
-                "value": "={{ $('Download file').item.json.id }}"
+                "name": "file_id",
+                "value": "={{ $('List folder files').item.json.id }}"
               },
               {
-                "name": "fileName",
-                "value": "={{ $('Download file').item.json.name }}"
+                "name": "file_name",
+                "value": "={{ $('List folder files').item.json.name }}"
+              },
+              {
+                "name": "last_modified",
+                "value": "={{ $('List folder files').item.json.modifiedTime }}"
               }
             ]
           }
@@ -225,48 +323,39 @@
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
       "typeVersion": 1.1,
       "position": [
-        1264,
+        2064,
         432
-      ]
+      ],
+      "notes": "last_modified is what the next run compares against. Without it there is no change detection."
     },
     {
       "parameters": {
-        "chunkOverlap": 200,
-        "options": {}
+        "chunkSize": 1000,
+        "chunkOverlap": 200
       },
       "id": "89ea3879-8d7f-4826-8aad-0027c92fc81f",
       "name": "Split into passages",
       "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
       "typeVersion": 1,
       "position": [
-        1264,
+        2064,
         640
       ]
     },
     {
-      "parameters": {},
-      "id": "c6c40104-49b2-41be-8b6c-d686fea174d6",
-      "name": "Skip unreadable file",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [
-        672,
-        400
-      ]
-    },
-    {
       "parameters": {
-        "content": "### How it stays current\nEvery pass lists the folder, and each readable file has its previous chunks deleted by `fileId` before the new ones are written. That is why editing a document changes the answers instead of adding a second, stale copy of it.",
-        "height": 176,
-        "width": 400
+        "content": "### Only new and changed files are written\nEvery pass looks each file up in the index by `file_id`. No entry means it is new. An entry means compare Drive `modifiedTime` against the `last_modified` written at index time, and stop unless it is newer. Nothing is downloaded, embedded or written for a file that has not changed.",
+        "height": 260,
+        "width": 460,
+        "color": 4
       },
-      "id": "29514aeb-5977-4c19-ae14-e5be6d8f2b6c",
-      "name": "Sticky Note 6a6b2325",
+      "id": "d709a68f-1f20-44d3-8c4e-9b5ae8bea413",
+      "name": "Only new and changed files are written",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        560,
-        624
+        960,
+        640
       ]
     }
   ],
@@ -287,14 +376,52 @@
       "main": [
         [
           {
-            "node": "Readable document?",
+            "node": "Pair file with index entry",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Look up this file in the index",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Readable document?": {
+    "Look up this file in the index": {
+      "main": [
+        [
+          {
+            "node": "Pair file with index entry",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Embeddings for lookup": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Look up this file in the index",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pair file with index entry": {
+      "main": [
+        [
+          {
+            "node": "Never indexed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Never indexed?": {
       "main": [
         [
           {
@@ -305,18 +432,25 @@
         ],
         [
           {
-            "node": "Skip unreadable file",
+            "node": "Changed since it was indexed?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Download file": {
+    "Changed since it was indexed?": {
       "main": [
         [
           {
             "node": "Delete previous chunks",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Nothing to do",
             "type": "main",
             "index": 0
           }
@@ -327,6 +461,17 @@
       "main": [
         [
           {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
             "node": "Index the passages",
             "type": "main",
             "index": 0
@@ -334,7 +479,7 @@
         ]
       ]
     },
-    "Embeddings": {
+    "Embeddings for writing": {
       "ai_embedding": [
         [
           {

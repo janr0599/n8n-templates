@@ -1,14 +1,16 @@
 # Drive folder → vector store, kept current
 
-_Status: **published**. [`drive-to-vector-store.json`](./drive-to-vector-store.json), 11 nodes._
+_Status: **published**. [`drive-to-vector-store.json`](./drive-to-vector-store.json), 15 nodes._
 
 ## What it does
 
 Most RAG demos index a folder once. The interesting part is the second run: what
 happens when a file is edited, or when nothing has changed. This pattern walks a
-Drive folder on a schedule and, for every readable document, deletes that file's
-previous passages before writing the new ones, so an edited document replaces its
-own vectors instead of sitting alongside a stale copy of itself.
+Drive folder on a schedule and, for each file, looks it up in the index by
+`file_id`. No entry means the file is new. An entry means comparing Drive's
+`modifiedTime` against the `last_modified` written when it was indexed, and doing
+nothing unless the file is genuinely newer. Only then are the old passages deleted
+and the file re-indexed.
 
 ## Import
 
@@ -28,16 +30,18 @@ Then fill in three placeholders and attach three credentials:
 
 | Node | Does | Notes |
 |---|---|---|
-| Every hour | Runs the pass on a schedule | Hourly by default; the interval is the only thing tying this to "how fresh" |
-| List folder files | Lists every file in the folder with its full metadata | `returnAll`, `fields: *`, so `modifiedTime` and `mimeType` come back |
-| Readable document? | Splits documents the loader can read from everything else | PDF, Google Doc, .docx and plain text on the true branch |
-| Skip unreadable file | Absorbs the rest | A spreadsheet or image ends the run for that item, not the batch |
-| Download file | Fetches the binary | Google Docs are exported as plain text on the way out |
-| Delete previous chunks | Deletes this file's existing vectors by `fileId` | **The node that matters.** Continues on error, because a first-time file has nothing to delete |
-| Index the passages | Embeds and writes the new passages | `insert` mode into the `documents` namespace |
-| Embeddings | Turns each passage into a vector | `text-embedding-3-small` |
-| Read the document | Reads the binary and attaches `fileId` and `fileName` as metadata | The metadata is what the delete step filters on next run |
-| Split into passages | 1000 characters, 200 overlap | Overlap keeps sentences from being cut mid-thought |
+| Every hour | Runs the pass on a schedule | Drive has no reliable per-folder change event, so this polls and filters |
+| List folder files | Lists every file with full metadata | `returnAll`, `fields: *`, so `modifiedTime` comes back |
+| Look up this file in the index | Asks the store whether this `file_id` is already there | Metadata filter does the lookup; `topK: 1`; continues on error so an empty index is not a failure |
+| Pair file with index entry | Left-joins the Drive file to its index entry | `id` ↔ `document.metadata.file_id`, `keepEverything` |
+| Never indexed? | Empty `document` means the file is new | New files go straight to download |
+| Changed since it was indexed? | `modifiedTime` later than `last_modified` | **The node that saves the money.** False means stop |
+| Nothing to do | Ends the run for an unchanged file | No download, no embedding, no write, no cost |
+| Delete previous chunks | Deletes this file's vectors by `file_id` | Only reached when the file exists *and* changed |
+| Download file | Fetches the binary | Google Docs exported as plain text |
+| Read the document | Reads the binary, attaches `file_id`, `file_name`, `last_modified` | `last_modified` is what the next run compares against |
+| Split into passages | 1000 characters, 200 overlap | |
+| Index the passages | Embeds and writes | `embeddingBatchSize: 1` |
 
 ## Credentials you need
 
@@ -57,13 +61,25 @@ unreadable file does not abandon the rest of the batch. The upsert does **not**
 continue on error: a passage that fails to write should fail loudly, because a
 partial index is the failure mode nobody notices.
 
-## Why the delete step exists
+## Why the two checks exist
 
-Most published RAG ingestion flows index a folder once. The interesting run is the
-second one. Without the delete, editing a document leaves its old passages in the
-index next to the new ones, and the assistant starts answering from a version of
-the document that no longer exists. Deleting by `fileId` first is what makes an
-edit a replacement.
+Most published RAG ingestion flows index a folder once, and the naive scheduled
+version re-indexes everything on every pass. That works, and it is wrong: you pay
+for embeddings on files nobody touched, burn Drive and vector-store quota, and
+leave a window on each pass where a document is deleted and not yet rewritten.
+
+The two checks are the whole point:
+
+1. **Never indexed?** An empty join result means the file is new. Index it.
+2. **Changed since it was indexed?** Compare Drive's `modifiedTime` against the
+   `last_modified` stored on the file's own passages. If it is not newer, stop.
+
+Which is why `last_modified` has to be written as metadata at index time. Without
+it there is nothing to compare against on the next pass, and you are back to
+re-indexing everything.
+
+Drive has no straightforward per-folder "file added or modified" event, which is
+why this polls on a schedule and filters, rather than triggering on change.
 
 ## Measured result
 
