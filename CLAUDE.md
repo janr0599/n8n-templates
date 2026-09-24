@@ -56,7 +56,7 @@ second copy would only be a second thing to keep in sync.
 - `Demos` — every copy. Recorded against, and exported from. Publishable only when
   the origin table above says so, which is not true of everything in here
 - `Examples` — unrelated scratch, nothing in this repo comes from it
-- Everything else is live example work. Do not activate, deactivate or save it
+- Everything else is live agency work. Do not activate, deactivate or save it
 
 Copies are made with n8n's own **Duplicate**, in the UI, which clones the credential
 bindings exactly. A duplicated webhook workflow needs a new path before it can be
