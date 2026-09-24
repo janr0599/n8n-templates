@@ -31,6 +31,17 @@ Then fill in the placeholders and attach two credentials.
 | `YOUR_TARGET` | Research & Draft Email | The kind of company you sell to, e.g. "dental practice" |
 | `WHAT_YOU_SELL` | Research & Draft Email | One sentence on what you do for them |
 
+### The prompt ships short on purpose
+
+The prompt in the JSON is a skeleton: the tasks, the output contract and the hard
+rules. The version this was built from is roughly twice as long, and almost all of
+that extra length is negative constraints earned from real sends, things the model
+did once that you never want it to do again. Those are specific to a market and to
+a sender, so copying them would not help you.
+
+Grow yours the same way: send, read what comes out, and add the constraint. The
+structure here is the part that transfers.
+
 The `Find Contact Page` node carries a note worth reading: put the words your own
 market uses at the front of `teamPats`. The list ships generic (`our team`,
 `leadership`, `about`); a vertical usually has a better word (`attorneys`,

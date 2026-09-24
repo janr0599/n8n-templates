@@ -44,8 +44,10 @@ Read the original in full before replicating it. Node order is usually deliberat
 
 ## Folders in the instance
 
-- `Demos` — copies used for recordings. Nothing here is published from directly
-- `Examples` — clean reference builds for this repo
+- `Demos` — everything recorded against: client-derived copies, duplicates of live
+  workflows, and the clean reference builds for this repo. Publishable only when
+  the origin table above says so, which is not true of most of what is in here
+- `Examples` — scratch
 - Everything else is live example work. Do not activate, deactivate or save it
 
 Demo copies are made with n8n's own **Duplicate**, in the UI, which clones the
