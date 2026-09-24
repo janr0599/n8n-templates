@@ -23,11 +23,14 @@ is fine, publishing it is not.
 
 **The sanitiser does not decide this.** It removes identifiers: names, emails,
 record ids, credentials. It cannot remove the client's business, which lives in node
-names, branch conditions and document templates. The onboarding workflow is the worked
-example: forced through the script it still carries RFE 42 times, NIW 20, I-130 19,
-plus beneficiary, petition, USCIS and priority date. Every name gone, the practice
-still obvious. A clean scan means the file is free of identifiers, not that it is
-free to publish.
+names, branch conditions and document templates. Checked on 2026-09-24: forcing a
+client workflow through the script left roughly two hundred occurrences of that
+client's industry jargon, in node names and branch labels. Every name was gone and
+the practice was still obvious from the file alone. A clean scan means free of
+identifiers, not free to publish.
+
+Do not write the examples into this file either. It is public, and a note explaining
+which terms to strip is a note that publishes them.
 
 ## Export, clean, generalise. Do not rebuild in the instance
 
