@@ -1,0 +1,159 @@
+{
+  "name": "Notify a human and turn the bot off",
+  "nodes": [
+    {
+      "parameters": {
+        "sendTo": "YOUR_NOTIFICATION_EMAIL",
+        "subject": "[URGENT ] Human Attention Needed in Conversation",
+        "message": "=<p>Hi,</p>\n\n<p>{{ $json.email_opening }}</p>\n\n<ul>\n    <li>Message Content: <strong>{{ $json.message_content }}</strong></li>\n  <li>Conversation ID: <strong>{{ $json.conversation_id }}</strong></li>\n  <li>Customer Name: <strong>{{ $json.sender_name }}</strong></li>\n  <li>Channel: <strong>{{ $json.channel}}</strong></li>\n</ul>\n\n<p>The bot has been turned off for this conversation, please take care <strong>ASAP</strong>, thank you.<p>\n ",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "YOUR_SENDER_NAME"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        48,
+        -80
+      ],
+      "id": "f8001207-3e4d-4d50-99d1-5fbe244d8219",
+      "name": "Send a message",
+      "executeOnce": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "workflowInputs": {
+          "values": [
+            {
+              "name": "email_opening"
+            },
+            {
+              "name": "message_content"
+            },
+            {
+              "name": "account_id",
+              "type": "number"
+            },
+            {
+              "name": "contact_id"
+            },
+            {
+              "name": "conversation_id",
+              "type": "number"
+            },
+            {
+              "name": "sender_name"
+            },
+            {
+              "name": "channel"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -160,
+        -80
+      ],
+      "id": "86cc2e99-e4f7-420d-a191-b52620281caa",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://YOUR_CHATWOOT_HOST/api/v1/accounts/{{ $('When Executed by Another Workflow').item.json.account_id }}/contacts/{{ $('When Executed by Another Workflow').item.json.contact_id }}/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"custom_attributes\": {\n    \"bot_status\": \"OFF\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        432,
+        -80
+      ],
+      "id": "3f40ba79-90dc-4bec-a4b6-f9e5882196ab",
+      "name": "Turn Chatwoot Bot Off",
+      "executeOnce": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "operation": "markAsUnread",
+        "messageId": "={{ $json.id }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        -80
+      ],
+      "id": "d49e483d-e94a-469d-ab0b-05eb1f04e928",
+      "name": "Mark a message as unread"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Mark a message as unread",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Turn Chatwoot Bot Off": {
+      "main": [
+        []
+      ]
+    },
+    "Mark a message as unread": {
+      "main": [
+        [
+          {
+            "node": "Turn Chatwoot Bot Off",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}

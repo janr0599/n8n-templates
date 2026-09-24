@@ -1,0 +1,2477 @@
+{
+  "name": "Chat intake agent with human handoff",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "e6374607-5243-4fa5-a14e-2fb564688678",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -896,
+        160
+      ],
+      "id": "33540dbe-9553-4643-bfa2-1c7e30283491",
+      "name": "Webhook"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "06c8811d-a9fd-485a-af88-0224954c56aa",
+              "name": "account_id",
+              "value": "={{ $json.body.account.id }}",
+              "type": "number"
+            },
+            {
+              "id": "6df501a8-4db7-4cad-9f0c-9c98d6207de7",
+              "name": "conversation_id",
+              "value": "={{ $json.body.conversation.id }}",
+              "type": "number"
+            },
+            {
+              "id": "d6779917-8984-40e9-b16e-6b14c39d5bc2",
+              "name": "message",
+              "value": "={{ $json.body.content.replace(/!?\\[.*?\\]\\(.*?\\)/g, \"\").trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "4883e694-6237-49b5-8d89-a018efb266c5",
+              "name": "message_type",
+              "value": "={{ \n  $json.body.conversation.messages[0].attachments?.length > 0 \n  ? $json.body.conversation.messages[0].attachments[0].file_type \n  : ($json.body.content.match(/!\\[.*?\\]\\(.*?\\)/) ? \"image\" : \"text\") \n}}",
+              "type": "string"
+            },
+            {
+              "id": "c564ed3d-0b84-4bb3-be15-e0e547095833",
+              "name": "media_url",
+              "value": "={{ \n  $json.body.conversation.messages[0].attachments?.[0]?.data_url \n  || $json.body.content.match(/\\((https:\\/\\/.*?)\\)/)?.[1] \n  || \"\" \n}}",
+              "type": "string"
+            },
+            {
+              "id": "4e54e160-9089-4a3e-b660-dc3287dee933",
+              "name": "message_id",
+              "value": "={{ $json.body.conversation.messages[0].id }}",
+              "type": "string"
+            },
+            {
+              "id": "3b8b92ef-e78e-49e2-a095-da5c8da3c2fe",
+              "name": "sessionID",
+              "value": "={{ $json.body.conversation.id }}",
+              "type": "string"
+            },
+            {
+              "id": "18f21e3b-06ab-4573-975a-42c846f7c7b7",
+              "name": "date_time",
+              "value": "={{ $json.body.conversation.messages[0].created_at.toDateTime('s').toLocal() }}",
+              "type": "string"
+            },
+            {
+              "id": "616bd687-80ae-434a-a7b2-cc005f097b4f",
+              "name": "bot_status",
+              "value": "={{ $json.body.conversation.messages[0].sender.custom_attributes.bot_status }}",
+              "type": "string"
+            },
+            {
+              "id": "256349e7-c880-4ede-9083-75db2887623d",
+              "name": "contact_id",
+              "value": "={{ $json.body.conversation.messages[0].sender.id }}",
+              "type": "string"
+            },
+            {
+              "id": "ec38a8ea-0c4d-4780-95d3-50bbf4892f32",
+              "name": "sender_name",
+              "value": "={{ $json.body.conversation.messages[0].sender.name && $json.body.inbox.name != \"Website\" ? $json.body.conversation.messages[0].sender.name : \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "5e6dc42d-45ef-4287-bdc2-2c5fbd626660",
+              "name": "sender_phoneNumber",
+              "value": "={{ $json.body.conversation.messages[0].sender.phone_number ? $json.body.conversation.messages[0].sender.phone_number : \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "086b0f14-7982-4b33-8520-71a3c25718af",
+              "name": "contact_channel",
+              "value": "={{ $json.body.inbox.name }}",
+              "type": "string"
+            },
+            {
+              "id": "0539f9dd-1997-4a5e-a220-a7258b425946",
+              "name": "sender_email",
+              "value": "={{ $json.body.conversation.messages[0].sender.email ? $json.body.conversation.messages[0].sender.email : \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "f44b74e2-aaf1-49b9-8246-725d2c0aa32a",
+              "name": "inbox_id",
+              "value": "={{ $json.body.inbox.id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -448,
+        144
+      ],
+      "id": "dfbe4ca8-8999-4538-8719-0c244136dbb0",
+      "name": "data_extraction"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Set Variables').item.json.concat_message }}",
+        "options": {
+          "systemMessage": "=**Persona**\n===========\n\nYou are **YOUR_ASSISTANT_NAME**, the intake assistant for **YOUR_COMPANY**. Your primary goal is to engage potential clients (YOUR_TARGET_ROLES) in a natural, professional text conversation via our social channels or website. You represent WHAT_YOU_DO. Your objective is to capture their information into our CRM, and schedule a free 30-minute Discovery Call.\n\n**Core Instructions & Rules**\n=============================\n\n* BEFORE providing a meeting date/time requested by the user, you MUST convert the time to YOUR_TIMEZONE.\n\n* **Internal Thought:** You are not collecting their info to offer custom solutions or tailor a recommendation to their needs, you are gathering the user's info in order for the team to better assess their needs and schedule a free 30-minute discovery call to asnswer any questions they may have.\n    \n### **1. Human-like, Premium Conversation**\n\n* **Tone:** Professional, polished, and efficient. You sound like a high-level executive assistant.\n    \n* **Style:** Use natural contractions (e.g., you're, it's, we'll). Keep responses concise.\n    \n* **Formatting:** You do not need to worry about splitting your messages; the system will do that. Just write naturally using line breaks for different thoughts.\n    \n* **Emojis:** Use them very sparingly and professionally (e.g., occasional use of 👋, 🗓️, or ✅). Do NOT overuse them.\n    \n\n### **2. Bilingual Support**\n\n* You are fully bilingual in English and Spanish.\n    \n* You **MUST** automatically detect the language of the user's message and respond **only** in that same language, maintaining the YOUR_COMPANY tone.\n    \n\n### **3. The Intake Flow (Primary Goal)**\n\nThis is your main operational flow. You must guide the user through this sequence to gather their info and book a Discovery Call.\n\n* **Step 1: The Initial Qualification (Data Capture)**\n\n    * **Introduce yourself:** You must greet the user, and introduce yourself with your name and position at the agency.\n    \n    * **Name & Email:** You must actively collect the user's information. Do not rely on system variables. Ask: *\"To get started, could I have your full name and the best work email to reach you at?\"*\n        \n    * **Ask for Company Name and Bottleneck:** Once they provide their name and email, ask: *\"Thank you. And what is the official name of your company, and what is the main manual task taking up too much of your team's time right now?\"*\n        \n* **Step 2: CRM & Chatwoot Management (Background Tools)**\n    \n    * Once you have their Name, Email, Company Name, and Bottleneck:\n        \n    * **Action 1:** Call the get_client_details tool using their email.\n        \n    * **Action 2:** If get_client_details returns NO record, immediately call create_lead_record using the context you gathered (Name, Email, Company Name, Bottleneck) and send {{ $('Set Variables').item.json.contact_channel }} as the source value.\n        \n    * **Action 3:** If {{ $('Set Variables').item.json.contact_channel }} is exactly equal to \"Website\" AND you have their name and email, call update_chatwoot_contact to update their profile in our chat software.\n        \n* **Step 3: Appointment Management (Scheduling)**\n\n    For booking appointments, you must follow this exact sequence:\n    \n    * **Timezone Confirmation:** *BEFORE* checking availability, you must first confirm their timezone. *\"Just to make sure we align our calendars, what timezone are you in?\"*\n        \n    * **Check Availability:** Once confirmed, internally convert their requested timeframe to YOUR_TIMEZONE. You MUST account for the specific DATE the user is asking for. Call the check_availability tool using a full Date-Time ISO format. (e.g., afterTime: YYYY-MM-DDTHH:mm:ss, beforeTime: YYYY-MM-DDTHH:mm:ss). For example, if they ask for tomorrow, combine tomorrow's date with 09:00:01 as the start and 16:59:59 as the end. **Do not tell them the titles of busy events.**\n        \n    * **Book Event:** Once they confirm a start time, calculate the end time (+30 minutes). Call the book_event tool with startTime, endTime, email, and eventSummary (\"30-minute Discovery Call\"). The times MUST be in full Date-Time ISO format.\n        \n* **Step 4: Updating or Deleting Appointments**\n    \n    * **Lookup:** If a returning client asks to reschedule, call get_client_details using their email to retrieve their specific **Event ID**.\n        \n    * **Updates:** ALWAYS check availability first to find an open time. Call update_appointment passing the new startTime, endTime (in full ISO format), and the eventID.\n        \n    * **Deletions:** Call delete_appointment passing the eventID.\n        \n* **Step 5: The Fallback Link**\n\n    * If the user hesitates, is unsure of their schedule, or wants to look at a calendar themselves, offer the direct link: \"No problem at all. You can view our team's availability and pick a time that works best for you here:\n    \n    * YOUR_BOOKING_LINK\n        \n\n### **4. Handling Objections & Pricing**\n\nWrite one short scripted answer per objection you actually hear, in the assistant's voice, and put them here. Two or three is usually enough. Include your pricing answer only if you are comfortable with the model saying it unprompted.\n    \n\n### **5. General Constraints & Edge Cases**\n\n* **Timezones:** Your system availability is based on YOUR_TIMEZONE. If a user suggests a time in their local timezone (e.g., \"11 AM Pacific\"), you **MUST** convert it to YOUR_TIMEZONE before checking availability or booking.\n    \n* **Human Handoff:** If a user demands to speak to a human immediately, pause the scheduling flow and say: *\"I understand. I will have a member of our management team review this chat and reach out to you via email shortly.\"*\n    \n\n**Tools Available**\n===================\n\n### **get_client_details:**\n\n* Trigger at the start for existing clients, or to fetch their **Event ID** before modifying an appointment. Requires email.\n    \n\n### **create_lead_record:**\n\n* Trigger to create a new client in the CRM. Requires fullName, email, companyName, and bottleneck.\n    \n\n### **check_availability:**\n\n* Trigger to find open calendar slots. Requires afterTime and beforeTime in full ISO 8601 Date-Time format (e.g., 2026-04-20T09:00:01) in YOUR_TIMEZONE.\n    \n\n### **book_event:**\n\n* Trigger to schedule the Discovery Call. Requires startTime, endTime in full ISO 8601 Date-Time format (e.g., 2026-04-20T14:30:00) in YOUR_TIMEZONE, email, and eventSummary (\"30-minute Discovery Call\").\n    \n\n### **update_appointment:**\n\n* Trigger to change an existing meeting. Requires the new startTime, endTime in full ISO 8601 Date-Time format (in YOUR_TIMEZONE), and the eventID (obtained from get_client_details).\n    \n\n### **delete_appointment:**\n\n* Trigger to cancel a meeting. Requires the eventID.\n    \n\n### **update_chatwoot_contact:**\n\n* Use to update the chat software's contact profile. ONLY use this if {{ $('Set Variables').item.json.contact_channel }} is \"Website\". Requires Name and Email.\n    \n\n### **Think:**\n\n* Use this for complex reasoning before formulating a reply.\n    \n\n**Context**\n===========\n\nFor reference, the exact current Date and Time right now is: {{$now}}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        2512,
+        128
+      ],
+      "id": "665a2f86-55b5-4fa4-bb25-90d8f725eb5b",
+      "name": "AI Agent",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2192,
+        416
+      ],
+      "id": "ca0033bb-4f72-4d15-af65-cc2565855de5",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "99d7f524-c631-43b9-92cb-5057ea116c18",
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "message_created",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "0896ec23-d811-450d-b516-6125291baf08",
+              "leftValue": "={{ $json.body.conversation.messages[0].sender.custom_attributes.bot_status }}",
+              "rightValue": "OFF",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            },
+            {
+              "id": "a9a79d32-3458-41db-a0ac-76d0fb9557c9",
+              "leftValue": "={{ $json.body.conversation.messages[0].sender_type || $json.body.conversation.meta.sender.type }}",
+              "rightValue": "Contact",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -688,
+        160
+      ],
+      "id": "d15b26f1-d29e-4990-9868-7aa91d5fe0a2",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('data_extraction').item.json.conversation_id }}",
+        "tableName": "chatbot_memory",
+        "contextWindowLength": 15
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        2352,
+        416
+      ],
+      "id": "0c3f0b26-7430-4ac9-99bf-7c1faf477fcb",
+      "name": "Postgres Chat Memory",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        192,
+        -16
+      ],
+      "id": "a10a5842-f7b4-44ee-8afe-57ca14947e88",
+      "name": "Transcribe a recording",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fa479e3d-7e15-4512-92fb-f88f2a96e4f7",
+              "name": "final_message",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "f7c6da14-0f93-4b47-8063-fc176d353226",
+              "name": "sessionId",
+              "value": "={{ $('data_extraction').item.json.sessionID }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        384,
+        -16
+      ],
+      "id": "5c66222f-f6b9-47f6-b11e-b39f0a187480",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ef1db946-4a56-4699-ba10-518c8d22d03f",
+              "name": "final_message",
+              "value": "={{ $('data_extraction').item.json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "06f3e55b-a86c-47e1-8501-57d155acc600",
+              "name": "sessionId",
+              "value": "={{ $('data_extraction').item.json.sessionID }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        192,
+        320
+      ],
+      "id": "0e49f38a-5fc0-48bb-85f8-fd85a2acec8d",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "propertyName": "message",
+        "key": "={{ $('data_extraction').item.json.sessionID }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        832,
+        144
+      ],
+      "id": "4b18ce9d-5404-4e23-97e6-fce8f3d2c418",
+      "name": "Get_buffer_data"
+    },
+    {
+      "parameters": {
+        "operation": "push",
+        "list": "={{ $('data_extraction').item.json.sessionID }}",
+        "messageData": "={{ JSON.stringify(\n{\n  \"message\": $json.final_message,\n  \"sessionId\": $json.sessionId,\n  \"date_time\": $('data_extraction').item.json.date_time\n}\n)}}",
+        "tail": true
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        624,
+        144
+      ],
+      "id": "3637c470-97c9-483f-9502-695c6fc03c84",
+      "name": "Buffer"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ JSON.parse($json.message[0]).sessionId }}",
+                    "rightValue": "={{ $('data_extraction').item.json.sessionID }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    },
+                    "id": "5f69cf67-0257-47e1-b2e0-30277074a5c1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Ignore"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "68f4c462-0ca6-44fc-9136-e14a8c515605",
+                    "leftValue": "={{ JSON.parse($json.message[0]).date_time }}",
+                    "rightValue": "={{ $now.minus(15, \"seconds\").toLocal() }}",
+                    "operator": {
+                      "type": "dateTime",
+                      "operation": "before"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Continue"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Wait"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1024,
+        128
+      ],
+      "id": "20d37e83-07ab-461a-b40d-d31da5d8766c",
+      "name": "Switch"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        0
+      ],
+      "id": "3fa5ae7e-e811-45f8-9138-b5a49c6ee58f",
+      "name": "No Operation, do nothing"
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1072,
+        384
+      ],
+      "id": "4bc887d1-2c8f-442c-8c87-c4c39f7c168d",
+      "name": "Wait"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "key": "={{ $('data_extraction').item.json.sessionID }}"
+      },
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        144
+      ],
+      "id": "58a4a736-c7b3-49c5-be53-3e9a5c95c61d",
+      "name": "Delete_buffer"
+    },
+    {
+      "parameters": {
+        "description": "Returns documents related to SmartNode Solutions services."
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1.1,
+      "position": [
+        2320,
+        576
+      ],
+      "id": "5e919321-0ec6-4068-b3f2-9afc0c1881d1",
+      "name": "Answer questions with a vector store"
+    },
+    {
+      "parameters": {
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "YOUR_PINECONE_INDEX",
+          "mode": "list",
+          "cachedResultName": "YOUR_PINECONE_INDEX"
+        },
+        "options": {
+          "pineconeNamespace": "YOUR_PINECONE_NAMESPACE"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        2160,
+        784
+      ],
+      "id": "8d12225e-938f-4ddb-88ed-85a894cc2dfe",
+      "name": "Pinecone Vector Store"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2496,
+        768
+      ],
+      "id": "39674be0-184d-422a-a5c7-0e97d20bc0d1",
+      "name": "OpenAI Chat Model1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        2128,
+        960
+      ],
+      "id": "1cdc2077-f9dc-44d2-bd7b-262a1119b435",
+      "name": "Embeddings OpenAI"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        4544,
+        112
+      ],
+      "id": "d8d2be58-a274-4453-80fb-859af352ee13",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "description": "Use the tool to identify the user's language based on the input. It will not obtain new information or change the database, but just append the thought to the log. Use it when complex reasoning or some cache memory is needed and to identify the input's language and generate a response in the same language."
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        2992,
+        416
+      ],
+      "id": "46074fe2-93c6-46a8-83fd-44f9f463ac0e",
+      "name": "Think"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        5856,
+        64
+      ],
+      "id": "115ef4bc-dea5-48fd-a6d2-dfb7ce057e5a",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "text": "=Analyze the image and output a clear description of what's in it so that an AI customer support agent can get back to the user who sent it. Also take this message into account as context, it van be a question or info related to the image the agent needs to respond: {{ $json.message }}",
+        "inputType": "base64",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        192,
+        144
+      ],
+      "id": "ac929549-4425-483e-9cd4-4012b1af85f2",
+      "name": "Analyze image",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fa479e3d-7e15-4512-92fb-f88f2a96e4f7",
+              "name": "final_message",
+              "value": "={{ $json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "f7c6da14-0f93-4b47-8063-fc176d353226",
+              "name": "sessionId",
+              "value": "={{ $('data_extraction').item.json.sessionID }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        384,
+        144
+      ],
+      "id": "af45fecc-b825-43b1-a424-61c6bd0c73d5",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "description": "Trigger at the start for existing clients, or to fetch their Event ID before modifying an appointment. Requires email",
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_GET_CLIENT_DETAILS_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Get client details"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('email', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "email"
+          ],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2512,
+        416
+      ],
+      "id": "e4c53935-1dd7-4c50-8f2b-c63893217a1b",
+      "name": "get_client_details"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to create a new client in the CRM. Requires fullName, email, companyName, and bottleneck.",
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_CREATE_LEAD_RECORD_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Create lead record"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('email', ``, 'string') }}",
+            "fullName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('fullName', ``, 'string') }}",
+            "bottleneck": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('bottleneck', ``, 'string') }}",
+            "companyName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('companyName', ``, 'string') }}",
+            "source": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('source', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "fullName",
+              "displayName": "fullName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "bottleneck",
+              "displayName": "bottleneck",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "companyName",
+              "displayName": "companyName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "source",
+              "displayName": "source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2688,
+        416
+      ],
+      "id": "7dfe4156-8d99-4f39-b1e5-5bb30871e719",
+      "name": "create_lead_record"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to find open calendar slots. Requires afterTime and beforeTime (in EST, 24-hr format).",
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_CHECK_AVAILABILITY_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Check availability"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "afterTime": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('afterTime', ``, 'string') }}",
+            "beforeTime": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('beforeTime', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "afterTime",
+              "displayName": "afterTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "beforeTime",
+              "displayName": "beforeTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2848,
+        416
+      ],
+      "id": "7800090f-1fd6-4834-9d68-db3f5f0f7602",
+      "name": "check_availability"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to schedule the Discovery Call. Requires startTime, endTime (EST), email, and eventSummary (\"30-minute Discovery Call\").",
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_BOOK_EVENT_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Book event"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "startTime": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('startTime', ``, 'string') }}",
+            "endTime": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('endTime', ``, 'string') }}",
+            "email": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('email', ``, 'string') }}",
+            "eventSummary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('eventSummary', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "startTime",
+              "displayName": "startTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "endTime",
+              "displayName": "endTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "email",
+              "displayName": "email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "eventSummary",
+              "displayName": "eventSummary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2592,
+        560
+      ],
+      "id": "ea35a859-636f-4dd5-8499-23c97406dec5",
+      "name": "book_event"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to change an existing meeting. Requires the new startTime, endTime (EST), and the eventID (obtained from get_client_details).",
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_UPDATE_APPOINTMENT_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Update appointment"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "startTime": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('startTime', ``, 'string') }}",
+            "endTime": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('endTime', ``, 'string') }}",
+            "eventID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('eventID', ``, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "startTime",
+              "displayName": "startTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "endTime",
+              "displayName": "endTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "eventID",
+              "displayName": "eventID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2768,
+        560
+      ],
+      "id": "c9af838e-1110-4e32-911d-01bca93e3eae",
+      "name": "update_appointment"
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to cancel a meeting. Requires the eventID.",
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_DELETE_APPOINTMENT_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Delete appointment"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "eventID": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('eventID', ``, 'string') }}"
+          },
+          "matchingColumns": [
+            "eventID"
+          ],
+          "schema": [
+            {
+              "id": "eventID",
+              "displayName": "eventID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2944,
+        560
+      ],
+      "id": "c985669a-e5db-404a-8aaf-29e42bc17455",
+      "name": "delete_appointment"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        5280,
+        144
+      ],
+      "id": "d6da5652-11fb-4089-b938-c9f9113a9c65",
+      "name": "OpenAI Chat Model2"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        3872,
+        288
+      ],
+      "id": "90cdf7cc-c254-453d-898d-4be362f03129",
+      "name": "OpenAI Chat Model3"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"response\": {\n    \"part_1\": \"Reply with the first part of the response.\",\n    \"part_2\": \"Reply with the second part of the response (optional).\",\n    \"part_3\": \"Reply with the third part of the response (optional).\",\n    \"part_4\": \"Reply with the fourth part of the response (optional).\",\n    \"part_5\": \"Reply with the fourth part of the response (optional).\"\n  }\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        4064,
+        288
+      ],
+      "id": "884259aa-9cdc-4f71-83e9-30e7bc90b865",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "YES",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "1b5529d3-7f28-462f-9406-5b314d7471d7"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "YES"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "31cda4c3-b436-40db-bd0d-ac7c7ec36d61",
+                    "leftValue": "={{ $json.text }}",
+                    "rightValue": "NO",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "NO"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        5616,
+        -32
+      ],
+      "id": "0de14e35-312a-404c-beaf-a51728ec4f35",
+      "name": "Switch2"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://YOUR_CHATWOOT_HOST/api/v1/accounts/{{ $('data_extraction').item.json.account_id }}/contacts/{{ $('data_extraction').item.json.contact_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "name",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters0_Value', ``, 'string') }}"
+            },
+            {
+              "name": "company_name",
+              "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('parameters2_Value', ``, 'string') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        3120,
+        560
+      ],
+      "id": "0bbcad5b-904f-4506-8517-08f18c018c64",
+      "name": "update_chatwoot_contact"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        4000,
+        496
+      ],
+      "id": "629fbfab-59be-4a8d-8591-3c3742fa4e3f",
+      "name": "OpenAI Chat Model4"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nlet rawText = $input.first().json.guardrailsInput || \"\"\n\n// 2. Strip Em dashes (—) and En dashes (–), replacing them with a space\nlet cleanText = rawText.replace(/—/g, \" \").replace(/–/g, \" \");\n\n// 3. Return the new structure mapping the cleaned text to the \"response\" key\nreturn {\n  json: {\n    response: cleanText\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3632,
+        112
+      ],
+      "id": "c324cb4d-c4d2-4bbf-bab5-974f63be020a",
+      "name": "Strip Out Em Dashes"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.concat_message }}",
+        "guardrails": {
+          "jailbreak": {
+            "value": {
+              "threshold": 0.8
+            }
+          },
+          "pii": {
+            "value": {
+              "type": "selected",
+              "entities": [
+                "CREDIT_CARD",
+                "CRYPTO",
+                "US_DRIVER_LICENSE",
+                "US_BANK_NUMBER",
+                "US_PASSPORT",
+                "US_SSN",
+                "US_ITIN",
+                "MEDICAL_LICENSE",
+                "IP_ADDRESS"
+              ]
+            }
+          },
+          "secretKeys": {
+            "value": {
+              "permissiveness": "permissive"
+            }
+          }
+        }
+      },
+      "id": "e3dae102-8775-44b7-917f-e5c7f7b2b7d5",
+      "name": "Input Guardrails",
+      "type": "@n8n/n8n-nodes-langchain.guardrails",
+      "position": [
+        1856,
+        144
+      ],
+      "typeVersion": 1,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "model": "gpt-4.1-mini",
+        "options": {}
+      },
+      "id": "47c6464b-602a-4c4d-b6ef-3403818a3975",
+      "name": "Input Guardrails LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        1808,
+        336
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.output }}",
+        "guardrails": {
+          "nsfw": {
+            "value": {
+              "threshold": 0.8
+            }
+          },
+          "secretKeys": {
+            "value": {
+              "permissiveness": "permissive"
+            }
+          }
+        }
+      },
+      "id": "9f88eead-ef42-435e-b067-a2efc0045002",
+      "name": "Output Guardrails",
+      "type": "@n8n/n8n-nodes-langchain.guardrails",
+      "position": [
+        3136,
+        128
+      ],
+      "typeVersion": 1,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o-mini",
+        "options": {}
+      },
+      "id": "cf9a4ae2-ffb8-4906-b780-78a1fdf72e19",
+      "name": "Output Guardrails LLM",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        3136,
+        304
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_HANDOFF_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Notify a human and turn the bot off"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "account_id": "={{ $('data_extraction').item.json.account_id }}",
+            "contact_id": "={{ $('data_extraction').item.json.contact_id }}",
+            "conversation_id": "={{ $('data_extraction').item.json.conversation_id }}",
+            "email_opening": "A user has sent information to the bot that has been flagged as sensitive, the details are as follows:",
+            "message_content": "={{ $json.guardrailsInput }}",
+            "sender_name": "={{ $('data_extraction').item.json.sender_name || \"Unknown\" }}",
+            "channel": "={{ $('data_extraction').item.json.contact_channel }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "email_opening",
+              "displayName": "email_opening",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message_content",
+              "displayName": "message_content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "account_id",
+              "displayName": "account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "contact_id",
+              "displayName": "contact_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "sender_name",
+              "displayName": "sender_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        2000,
+        304
+      ],
+      "id": "7e3db7d2-b43a-4864-87a4-aa91c894e298",
+      "name": "Call 'Send Human Notification & Turn Bot Off'"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_HANDOFF_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Notify a human and turn the bot off"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "account_id": "={{ $('data_extraction').item.json.account_id }}",
+            "contact_id": "={{ $('data_extraction').item.json.contact_id }}",
+            "conversation_id": "={{ $('data_extraction').item.json.conversation_id }}",
+            "email_opening": "The chat bot has attempted to send a message that has been flagged as inappropriate or confidential, this message has not been sent to the client. The details are as follows:",
+            "message_content": "={{ $json.guardrailsInput }}",
+            "sender_name": "={{ $('data_extraction').item.json.sender_name || \"Unknown\" }}",
+            "channel": "={{ $('data_extraction').item.json.contact_channel }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "email_opening",
+              "displayName": "email_opening",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message_content",
+              "displayName": "message_content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "account_id",
+              "displayName": "account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "contact_id",
+              "displayName": "contact_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "sender_name",
+              "displayName": "sender_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        3312,
+        288
+      ],
+      "id": "03af7ca4-dc74-4bbb-b48b-a0e211e9d138",
+      "name": "Call 'Send Human Notification & Turn Bot Off'1"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "YOUR_HANDOFF_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Notify a human and turn the bot off"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "account_id": "={{ $('data_extraction').item.json.account_id }}",
+            "contact_id": "={{ $('data_extraction').item.json.contact_id }}",
+            "conversation_id": "={{ $('data_extraction').item.json.conversation_id }}",
+            "email_opening": "A customer has requested human intervention, the details are as follows:",
+            "message_content": "={{ $('Set Variables').item.json.concat_message }}",
+            "sender_name": "={{ $('data_extraction').item.json.sender_name || \"Unknown\" }}",
+            "channel": "={{ $('data_extraction').item.json.contact_channel }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "email_opening",
+              "displayName": "email_opening",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "message_content",
+              "displayName": "message_content",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "account_id",
+              "displayName": "account_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "contact_id",
+              "displayName": "contact_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "conversation_id",
+              "displayName": "conversation_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "sender_name",
+              "displayName": "sender_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "channel",
+              "displayName": "channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.3,
+      "position": [
+        5856,
+        -128
+      ],
+      "id": "be381e67-8302-421b-8da3-c828b66546e1",
+      "name": "Call 'Send Human Notification & Turn Bot Off'2"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message_type }}",
+                    "rightValue": "audio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "b73e9adf-b3af-4b55-9c4a-23751fec6825"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "audio"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "4fd665e6-b472-46c3-baf6-32070aba5b8d",
+                    "leftValue": "={{ $json.message_type }}",
+                    "rightValue": "image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "457c3656-a9e7-4b28-b18c-1966e81adeb2",
+                    "leftValue": "={{ $json.message_type }}",
+                    "rightValue": "text",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -224,
+        128
+      ],
+      "id": "6aee0445-2a44-487f-9a34-065438085026",
+      "name": "Message Type"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fd5de466-a60e-4daf-ab21-3e3674e98acb",
+              "name": "concat_message",
+              "value": "={{ $json.message.map(m=> JSON.parse(m).message).join(\"\\n\") }}",
+              "type": "string"
+            },
+            {
+              "id": "2b0f97d0-4213-401c-a0eb-39ecc210ffb9",
+              "name": "session_Id",
+              "value": "={{ $('data_extraction').item.json.sessionID }}",
+              "type": "string"
+            },
+            {
+              "id": "bf73278f-1435-42d2-890f-c047c79755f4",
+              "name": "sender_name",
+              "value": "={{ $('data_extraction').item.json.sender_name }}",
+              "type": "string"
+            },
+            {
+              "id": "17b6a444-5e61-4730-8090-81e3a1330e03",
+              "name": "sender_email",
+              "value": "={{ $('data_extraction').item.json.sender_email }}",
+              "type": "string"
+            },
+            {
+              "id": "9d63a70c-8af8-4a46-b75e-5c4f9712059c",
+              "name": "sender_phoneNumber",
+              "value": "={{ $('data_extraction').item.json.sender_phoneNumber }}",
+              "type": "string"
+            },
+            {
+              "id": "6c65bb16-fc41-49c3-bd29-2eb4cdc97812",
+              "name": "contact_channel",
+              "value": "={{ $('data_extraction').item.json.contact_channel }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1504,
+        144
+      ],
+      "id": "339053ad-21c8-454d-9bd9-bc18e4c806b6",
+      "name": "Set Variables"
+    },
+    {
+      "parameters": {
+        "jsCode": "// This code takes the parsed output and prepares it for sending.\n// It creates a list of messages, and the next node in your workflow\n// will run once for each message in this list.\n\n// 'items' is the standard variable in many workflow tools for the incoming data.\n// If your tool uses a different variable (like '$input'), replace 'items' accordingly.\nconst parsedData = $input.first().json.output.response;\n\nconst messagesToSend = [];\n\n// Define the order of the parts to ensure they are sent sequentially.\nconst parts = ['part_1', 'part_2', 'part_3', 'part_4', 'part_5'];\n\n// Loop through each part from the parsed data.\nfor (const part of parts) {\n  // By adding 'as keyof typeof parsedData', we tell the linter it's a valid key.\n  const messageText = parsedData[part];\n\n  // Check if the message part is not empty or just whitespace.\n  if (messageText && messageText.trim() !== '') {\n    // Add the message to our list of items to be sent.\n    // The next node will receive this structured object as its input.\n    messagesToSend.push({\n      json: {\n        message: messageText\n        // You can add any other data you need for the HTTP request here.\n        // For example:\n        // recipientId: $input.first().json.recipientId\n      }\n    });\n  }\n}\n\n// Return the final array of messages.\n// The workflow will now treat this as a list of separate items to process.\nreturn messagesToSend;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4304,
+        112
+      ],
+      "id": "f2d3fe39-3426-420a-88a3-467a09fc0dcb",
+      "name": "Create List of Messages"
+    },
+    {
+      "parameters": {
+        "jsCode": "// This code calculates a realistic \"typing\" delay based on the length of the input text.\n// The output can be used in a subsequent \"Wait\" node.\n\n// Get the single input item provided by the \"Split in Batches\" node.\nconst item = $input.first();\nconst messageText = item.json.message;\n\n// If for some reason there's no message text, default to a short 3-second delay.\nif (!messageText) {\n  item.json.typingDelay = 5;\n  return item;\n}\n\nconst textLength = messageText.length;\nlet minDelay;\nlet maxDelay;\n\n// Define delay ranges based on the message length to simulate typing speed.\nif (textLength < 50) {\n  // Short message (e.g., \"Okay, I can do that!\")\n  minDelay = 5;\n  maxDelay = 7;\n} else if (textLength < 150) {\n  // Medium message (2-3 sentences)\n  minDelay = 8;\n  maxDelay = 11;\n} else {\n  // Long message (longer paragraphs)\n  minDelay = 12;\n  maxDelay = 15;\n}\n\n// Calculate a random delay within the determined range and round to a whole number.\nconst delayInSeconds = Math.round(Math.random() * (maxDelay - minDelay) + minDelay);\n\n// Add the calculated delay as a new field to the item's JSON data.\n// This preserves the original message and just adds the new delay value.\nitem.json.typingDelay = delayInSeconds;\n\n// Return the modified item, now with the typingDelay property.\nreturn item;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4816,
+        128
+      ],
+      "id": "2e2b9879-afc0-4d2f-8581-aeb1ac764df1",
+      "name": "Calculate Delay"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://YOUR_CHATWOOT_HOST/api/v1/accounts/{{ $('data_extraction').item.json.account_id }}/conversations/{{ $('data_extraction').item.json.conversation_id }}/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"content\": {{ JSON.stringify($('Dynamic Delay').item.json.message) }},\n  \"message_type\": \"outgoing\",\n  \"private\": false\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        5024,
+        336
+      ],
+      "id": "f1bdf7a2-0588-4e91-a100-822c85a0f5b6",
+      "name": "Send Message",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.text_to_classify }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=Analyze the user's message. Are they explicitly asking to speak to a human, a person, or a supervisor? Reply with EXACTLY and ONLY the word YES or NO. Do not include any other text or punctuation. Message to classify: \"{{ $json.text_to_classify }}\""
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        5280,
+        -32
+      ],
+      "id": "a5c4e57f-7f7a-4c84-8336-b166f1f92616",
+      "name": "Human Needed?",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.media_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        -16
+      ],
+      "id": "f53b315c-75e2-4504-9a87-ae0c564148bc",
+      "name": "Download Audio",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.media_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        144
+      ],
+      "id": "2dcbc239-a46c-4682-a86f-6238d111c450",
+      "name": "Download Image",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Input: {{ $json.response }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=### AI Agent Output Parser Prompt\n\nRole\n----\n\nYou are an output formatting specialist for a conversational AI agent. Your function is to prepare the agent's final text response for a messaging platform like Chatwoot.\n\nObjective\n---------\n\nTake the text from the input and return it in the JSON format described below. You must divide the agent's response into a maximum of five parts for staggered, natural-feeling message delivery. part\\_1 is mandatory; the others are optional. If the agent's response is short, part\\_2, part\\_3, part\\_4, and part\\_5 can be empty.\n\nRules\n-----\n\n*   **Mandatory Fields:** part\\_1 must always contain text. part\\_2, part\\_3, part\\_4, and part\\_5 can be left empty (\"\") or not included if they are not needed.\n    \n*   **Language Preservation:** The output language **MUST** match the input language. If the input is in English, all parts must be in English. If it is in Spanish, all parts must be in Spanish.\n    \n*   **Content Integrity:** Do not add, remove, or reorder information. The output must be a perfect, segmented representation of the input text.\n    \n*   **Length Constraint:** Each part (part\\_1, part\\_2, etc.) should not contain more than three sentences.\n    \n*   **Character Cleaning:** Remove any leading special characters like \\*, #, ¿, ¡ from the beginning of each part.\n    \n*   **Logical Segmentation:** Divide the input text into up to five logical parts, ensuring the original meaning and flow are maintained.\n    \n*   **Formatting:** Remove any newline characters (\\\\n) from within each part's text.\n    \n*   **Conversational Ending:** **Never** end your final sentences with a period (.). To keep the chat conversational, you can end with an emoji or no punctuation at all.\n    \n*   **Strict Output:** Your entire output **MUST** be a single, raw JSON object. Never send text outside of the JSON, such as explanations, comments, or markdown formatting like \\`\\`\\`json.\n    \n\nBehavior\n--------\n\n1.  Read the input content that needs to be formatted.\n    \n2.  Apply all the rules for cleaning, language preservation, and segmentation.\n    \n3.  Return only the resulting JSON object.\n\n4.  You must NOT modify the content of the input text.\n    \n\nExample\n-------\n\n**Input:** Hello! 👋 Thanks for reaching out to YOUR_COMPANY. My name is YOUR_ASSISTANT_NAME, and I'd be happy to help you streamline your operations today. To get started, may I have your name and a work email we can reach you at?\n\n**Expected Output:** { \"response\": { \"part\\_1\": \"Hello! 👋 Thanks for reaching out to YOUR_COMPANY\", \"part\\_2\": \"My name is YOUR_ASSISTANT_NAME, and I'd be happy to help you streamline your operations today\", \"part\\_3\": \"To get started, may I have your name and a work email we can reach you at?\", \"part\\_4\": \"\", \"part\\_5\": \"\" } }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        3888,
+        112
+      ],
+      "id": "efcbe8e5-b248-429a-b637-71e2e48bd26a",
+      "name": "Split into Parts",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "96824ff8-60cd-42d3-ae7d-beeb549d5245",
+              "name": "text_to_classify",
+              "value": "={{ $('Set Variables').item.json.concat_message }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        4816,
+        -32
+      ],
+      "id": "bd2086e4-cf00-4f79-829a-bbe3ef0c3615",
+      "name": "Text to Classify",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "amount": "={{ $json.typingDelay }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5024,
+        128
+      ],
+      "id": "99c28bd0-216c-4f9b-81eb-43e967943b15",
+      "name": "Dynamic Delay"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "data_extraction": {
+      "main": [
+        [
+          {
+            "node": "Message Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Output Guardrails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "data_extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buffer": {
+      "main": [
+        [
+          {
+            "node": "Get_buffer_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get_buffer_data": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Delete_buffer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get_buffer_data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete_buffer": {
+      "main": [
+        [
+          {
+            "node": "Set Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer questions with a vector store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pinecone Vector Store": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Answer questions with a vector store",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Answer questions with a vector store",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Text to Classify",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Calculate Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Think": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Buffer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "get_client_details": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_lead_record": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_availability": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "book_event": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "delete_appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Human Needed?",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Split into Parts",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Split into Parts",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch2": {
+      "main": [
+        [
+          {
+            "node": "Call 'Send Human Notification & Turn Bot Off'2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "update_chatwoot_contact": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model4": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Strip Out Em Dashes": {
+      "main": [
+        [
+          {
+            "node": "Split into Parts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Guardrails LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Input Guardrails",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Guardrails": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Send Human Notification & Turn Bot Off'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Guardrails LLM": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Output Guardrails",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Output Guardrails": {
+      "main": [
+        [
+          {
+            "node": "Strip Out Em Dashes",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'Send Human Notification & Turn Bot Off'1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message Type": {
+      "main": [
+        [
+          {
+            "node": "Download Audio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Download Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Variables": {
+      "main": [
+        [
+          {
+            "node": "Input Guardrails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create List of Messages": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Delay": {
+      "main": [
+        [
+          {
+            "node": "Dynamic Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Message": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Human Needed?": {
+      "main": [
+        [
+          {
+            "node": "Switch2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Image": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split into Parts": {
+      "main": [
+        [
+          {
+            "node": "Create List of Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text to Classify": {
+      "main": [
+        [
+          {
+            "node": "Human Needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dynamic Delay": {
+      "main": [
+        [
+          {
+            "node": "Send Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true
+  },
+  "nodeGroups": []
+}

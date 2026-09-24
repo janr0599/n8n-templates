@@ -20,7 +20,9 @@ DROP_WORKFLOW_KEYS = {"id", "versionId", "meta", "tags", "active", "isArchived",
 RISK = {
     "credential reference": r'"credentials"\s*:',
     "email address":        r'[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}',
-    "Airtable base/table":  r'\b(?:app|tbl|fld|rec)[A-Za-z0-9]{14}\b',
+    # Real ids appear as JSON *values*. The lookahead drops parameter names that
+    # happen to start with one of the prefixes, e.g. "appendAttribution":.
+    "Airtable base/table":  r'\b(?:app|tbl|fld|rec)[A-Za-z0-9]{14}\b(?!"\s*:)',
     "private hostname":     r'https?://(?!YOUR_)[A-Za-z0-9.-]*\.(?:local|internal)[A-Za-z0-9.-]*',
     # Real ids mix case and digits; n8n's own camelCase parameter names do not.
     "long opaque id":       r'\b(?=[A-Za-z0-9]*[0-9])(?=[A-Za-z0-9]*[a-z])(?=[A-Za-z0-9]*[A-Z])[A-Za-z0-9]{16,}\b',
