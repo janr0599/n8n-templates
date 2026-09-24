@@ -1,6 +1,6 @@
 # Drive folder → vector store, kept current
 
-_Status: **published**. [`drive-to-vector-store.json`](./drive-to-vector-store.json), 15 nodes._
+_Status: **published**. [`drive-to-vector-store.json`](./drive-to-vector-store.json), 16 nodes._
 
 ## What it does
 
@@ -37,8 +37,9 @@ Then fill in three placeholders and attach three credentials:
 | Never indexed? | Empty `document` means the file is new | New files go straight to download |
 | Changed since it was indexed? | `modifiedTime` later than `last_modified` | **The node that saves the money.** False means stop |
 | Nothing to do | Ends the run for an unchanged file | No download, no embedding, no write, no cost |
-| Delete previous chunks | Deletes this file's vectors by `file_id` | Only reached when the file exists *and* changed |
-| Download file | Fetches the binary | Google Docs exported as plain text |
+| Download file | Fetches the binary, before anything is deleted | A failure here leaves the existing passages untouched |
+| Delete previous chunks | Deletes this file's vectors by `file_id` | Harmless for a new file: the filter matches nothing |
+| Wait for the delete | Holds the file until the delete finishes, then passes it through | `chooseBranch`, so the insert cannot race the delete |
 | Read the document | Reads the binary, attaches `file_id`, `file_name`, `last_modified` | `last_modified` is what the next run compares against |
 | Split into passages | 1000 characters, 200 overlap | |
 | Index the passages | Embeds and writes | `embeddingBatchSize: 1` |
@@ -80,6 +81,17 @@ re-indexing everything.
 
 Drive has no straightforward per-folder "file added or modified" event, which is
 why this polls on a schedule and filters, rather than triggering on change.
+
+## Why the download comes first
+
+The order is deliberate. Downloading before deleting means a failed download costs
+nothing: the old passages are still in the index and the next pass tries again.
+Deleting first would leave a window where the document is gone from the index and
+its replacement never arrives.
+
+The `Wait for the delete` merge closes the other half of that race. It waits for
+both the download and the delete, then passes the downloaded file through, so the
+insert can only start once the old passages are actually gone.
 
 ## Measured result
 

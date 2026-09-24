@@ -200,33 +200,9 @@
       "typeVersion": 1,
       "position": [
         1472,
-        480
+        432
       ],
       "notes": "Already indexed and untouched. No download, no embedding, no write."
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://YOUR_INDEX_HOST/vectors/delete",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "pineconeApi",
-        "sendBody": true,
-        "contentType": "json",
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ namespace: \"documents\", filter: { file_id: { $eq: $json.id } } }) }}"
-      },
-      "id": "97463929-394b-438d-bc94-0194cbdcda52",
-      "name": "Delete previous chunks",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
-      "position": [
-        1472,
-        288
-      ],
-      "notes": "Only reached when the file exists in the index and has actually changed.",
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
     },
     {
       "parameters": {
@@ -251,12 +227,55 @@
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        1696,
+        1472,
         208
       ],
       "retryOnFail": true,
       "maxTries": 3,
+      "waitBetweenTries": 5000,
+      "notes": "Downloaded before anything is deleted, so a failure here leaves the existing passages untouched."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_INDEX_HOST/vectors/delete",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ namespace: \"documents\", filter: { file_id: { $eq: $('List folder files').item.json.id } } }) }}"
+      },
+      "id": "97463929-394b-438d-bc94-0194cbdcda52",
+      "name": "Delete previous chunks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        1696,
+        288
+      ],
+      "notes": "Harmless for a file that was never indexed: the filter simply matches nothing.",
+      "retryOnFail": true,
+      "maxTries": 3,
       "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch",
+        "numberInputs": 2,
+        "chooseBranchMode": "waitForAll",
+        "output": "specifiedInput",
+        "useDataOfInput": "1"
+      },
+      "id": "95b22b05-a175-41da-b2e6-a4365155b06a",
+      "name": "Wait for the delete",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1920,
+        208
+      ],
+      "notes": "Holds the downloaded file until the delete has finished, then passes the file through. Without this the insert could race the delete and lose the new passages."
     },
     {
       "parameters": {
@@ -276,7 +295,7 @@
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1.3,
       "position": [
-        1920,
+        2144,
         208
       ]
     },
@@ -289,7 +308,7 @@
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        1936,
+        2160,
         432
       ]
     },
@@ -323,7 +342,7 @@
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
       "typeVersion": 1.1,
       "position": [
-        2064,
+        2288,
         432
       ],
       "notes": "last_modified is what the next run compares against. Without it there is no change detection."
@@ -338,13 +357,13 @@
       "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
       "typeVersion": 1,
       "position": [
-        2064,
+        2288,
         640
       ]
     },
     {
       "parameters": {
-        "content": "### Only new and changed files are written\nEvery pass looks each file up in the index by `file_id`. No entry means it is new. An entry means compare Drive `modifiedTime` against the `last_modified` written at index time, and stop unless it is newer. Nothing is downloaded, embedded or written for a file that has not changed.",
+        "content": "### Only new and changed files are written\nEvery pass looks each file up by `file_id`. No entry means new. An entry means compare Drive `modifiedTime` against the `last_modified` written at index time, and stop unless it is newer.\n\nThe file is downloaded **before** anything is deleted, and the insert waits for the delete, so a failed download never leaves the index missing a document.",
         "height": 260,
         "width": 460,
         "color": 4
@@ -354,7 +373,7 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        960,
+        1072,
         640
       ]
     }
@@ -443,7 +462,7 @@
       "main": [
         [
           {
-            "node": "Delete previous chunks",
+            "node": "Download file",
             "type": "main",
             "index": 0
           }
@@ -457,18 +476,34 @@
         ]
       ]
     },
-    "Delete previous chunks": {
+    "Download file": {
       "main": [
         [
           {
-            "node": "Download file",
+            "node": "Wait for the delete",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Delete previous chunks",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Download file": {
+    "Delete previous chunks": {
+      "main": [
+        [
+          {
+            "node": "Wait for the delete",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Wait for the delete": {
       "main": [
         [
           {
