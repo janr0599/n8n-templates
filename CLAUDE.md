@@ -44,16 +44,24 @@ Read the original in full before replicating it. Node order is usually deliberat
 
 ## Folders in the instance
 
-- `Demos` — everything recorded against: client-derived copies, duplicates of live
-  workflows, and the clean reference builds for this repo. Publishable only when
-  the origin table above says so, which is not true of most of what is in here
-- `Examples` — scratch
+**One copy per workflow.** A copy of a live workflow goes in `Demos` and serves both
+jobs: it is what gets recorded, and it is what gets exported to this repo. There is
+no separate clean-room build. `clean-export.py` is the gate between the two, so a
+second copy would only be a second thing to keep in sync.
+
+- `Demos` — every copy. Recorded against, and exported from. Publishable only when
+  the origin table above says so, which is not true of everything in here
+- `Examples` — unrelated scratch, nothing in this repo comes from it
 - Everything else is live example work. Do not activate, deactivate or save it
 
-Demo copies are made with n8n's own **Duplicate**, in the UI, which clones the
-credential bindings exactly. A duplicated webhook workflow needs a new path before
-it can be activated, and should point at a demo Chatwoot inbox, a demo Airtable
-table and a demo Pinecone namespace, never the live ones.
+Copies are made with n8n's own **Duplicate**, in the UI, which clones the credential
+bindings exactly. A duplicated webhook workflow needs a new path before it can be
+activated.
+
+Point the copy at demo resources: a demo Chatwoot inbox, a demo Airtable table, a
+demo Pinecone namespace. That is for the recording, not the export, because the
+screen is visible in the video and the ids are not visible after the script has run.
+It also keeps a bad take off a live channel.
 
 ## Repo conventions
 
