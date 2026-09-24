@@ -1,0 +1,3 @@
+*.json filter=
+# keep exports out by accident
+sample/*.local.json
