@@ -15,11 +15,19 @@ file is gitignored.
 |---|---|---|
 | Own agency work, published and live | No. Export a copy and work on the file | Yes, after export, clean and generalise |
 | Already published to this repo (Drive to vector store) | No, leave it | Done |
-| Client-derived, copied to the instance | Yes, they are his copies | **Ask first.** Client-owned logic is the TAA risk, and "generalised" is hardest to defend here |
+| Client-derived, copied to the instance | Yes, they are his copies | **No.** Asked and answered 2026-09-24. See below |
 | Built clean for this repo (Examples folder) | Yes | Yes |
 
 Never publish a workflow the client owns, however generalised. Describing the work
 is fine, publishing it is not.
+
+**The sanitiser does not decide this.** It removes identifiers: names, emails,
+record ids, credentials. It cannot remove the client's business, which lives in node
+names, branch conditions and document templates. The onboarding workflow is the worked
+example: forced through the script it still carries RFE 42 times, NIW 20, I-130 19,
+plus beneficiary, petition, USCIS and priority date. Every name gone, the practice
+still obvious. A clean scan means the file is free of identifiers, not that it is
+free to publish.
 
 ## Export, clean, generalise. Do not rebuild in the instance
 

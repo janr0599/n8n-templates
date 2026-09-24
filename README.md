@@ -1,7 +1,7 @@
 <h1>n8n templates</h1>
 
 <p>
-  <img alt="Patterns" src="https://img.shields.io/badge/patterns-6-d4702c?style=flat-square&labelColor=131313">
+  <img alt="Patterns" src="https://img.shields.io/badge/patterns-4-d4702c?style=flat-square&labelColor=131313">
   <img alt="n8n" src="https://img.shields.io/badge/n8n-self--hosted-131313?style=flat-square&labelColor=131313&color=8c8c86">
   <img alt="Credentials" src="https://img.shields.io/badge/credentials-none%20in%20repo-8c8c86?style=flat-square&labelColor=131313">
   <img alt="Client data" src="https://img.shields.io/badge/client%20data-none%2C%20ever-8c8c86?style=flat-square&labelColor=131313">
@@ -23,17 +23,14 @@ AI engineer. Case studies for the production systems these come from are in the
 
 | # | Pattern | What it solves | Docs | JSON |
 |---|---|---|:--:|:--:|
-| 01 | [Inbound email → CRM conversation](./01-inbound-email-to-crm-thread) | Every email threaded onto the right contact, attachments filed and linked | ✅ | — |
-| 02 | [Scheduled reminders with Data Table dedupe](./02-scheduled-reminders-data-table-dedupe) | 48 / 24 / 1 h reminders that never double-send | ✅ | — |
 | 03 | [Chat intake agent with human handoff](./03-chat-intake-agent-human-handoff) | Agent, memory, message buffering, tools, and a classifier that hands off to a person | ✅ | [✅](./03-chat-intake-agent-human-handoff) |
 | 04 | [Drive folder → vector store, kept current](./04-drive-to-vector-store-upsert) | RAG ingestion where an edited file replaces its own vectors instead of duplicating | ✅ | [✅](./04-drive-to-vector-store-upsert/drive-to-vector-store.json) |
 | 05 | [Agent tools over MCP](./05-agent-tools-over-mcp) | Expose workflows as callable tools any MCP client can use | ✅ | [✅](./05-agent-tools-over-mcp) |
 | 06 | [Prospect research and first-touch draft](./06-prospect-research-and-draft) | Research a company, score fit, draft the email, and never let the model pick the address unchecked | ✅ | [✅](./06-prospect-research-and-draft/prospect-research-and-draft.json) |
 
 Each folder's README covers the node order, the credentials to create, the error
-handling and the measured result from the production build it was rebuilt from.
-A dash in the JSON column means the pattern is documented but the workflow file has
-not been published yet.
+handling and the measured result from the production build it came from. Templates 03
+and 05 compose: the chat agent calls the MCP tools, so import 05 first.
 
 ## Conventions
 
