@@ -24,7 +24,7 @@ AI engineer. Case studies for the production systems these come from are in the
 | # | Pattern | What it solves | Docs | JSON |
 |---|---|---|:--:|:--:|
 | 01 | [Chat intake agent with human handoff](./01-chat-intake-agent-human-handoff) | Agent, memory, message buffering, tools, and a classifier that hands off to a person | ✅ | [✅](./01-chat-intake-agent-human-handoff) |
-| 02 | [Drive folder → vector store, kept current](./02-drive-to-vector-store-upsert) | RAG ingestion where an edited file replaces its own vectors instead of duplicating | ✅ | [✅](./02-drive-to-vector-store-upsert/drive-to-vector-store.json) |
+| 02 | [Drive folder → vector store, kept current](./02-drive-to-vector-store-upsert) | RAG ingestion where an edited file replaces its own vectors instead of duplicating, plus the chat assistant that queries it | ✅ | [✅](./02-drive-to-vector-store-upsert) |
 | 03 | [Agent tools over MCP](./03-agent-tools-over-mcp) | Expose workflows as callable tools any MCP client can use | ✅ | [✅](./03-agent-tools-over-mcp) |
 | 04 | [Prospect research and first-touch draft](./04-prospect-research-and-draft) | Research a company, score fit, draft the email, and never let the model pick the address unchecked | ✅ | [✅](./04-prospect-research-and-draft/prospect-research-and-draft.json) |
 | 05 | [Client onboarding](./05-client-onboarding) | A signed client becomes a project, a checklist, a folder and a welcome letter, and a re-run cannot duplicate any of it | ✅ | [✅](./05-client-onboarding/client-onboarding.json) |

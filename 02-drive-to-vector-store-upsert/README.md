@@ -1,6 +1,6 @@
 # Drive folder → vector store, kept current
 
-_Status: **published**. [`drive-to-vector-store.json`](./drive-to-vector-store.json), 16 nodes._
+_Status: **published**. [`drive-to-vector-store.json`](./drive-to-vector-store.json) (16 nodes) and [`ask-the-knowledge-base.json`](./ask-the-knowledge-base.json) (7 nodes)._
 
 ## What it does
 
@@ -16,7 +16,12 @@ and the file re-indexed.
 
 ```
 n8n → Workflows → Import from file → drive-to-vector-store.json
+n8n → Workflows → Import from file → ask-the-knowledge-base.json
 ```
+
+The first keeps the index current. The second is how you actually see it work:
+a chat window that answers from whatever is in the index right now. Ingestion on
+its own is only testable by staring at Pinecone.
 
 Then fill in three placeholders and attach three credentials:
 
@@ -92,6 +97,42 @@ its replacement never arrives.
 The `Wait for the delete` merge closes the other half of that race. It waits for
 both the download and the delete, then passes the downloaded file through, so the
 insert can only start once the old passages are actually gone.
+
+## The two halves have to agree
+
+The chat side and the ingestion side are separate workflows pointed at the same
+place, and three things must match or retrieval silently returns nothing:
+
+| | Both workflows use |
+|---|---|
+| Index | `YOUR_INDEX_NAME` |
+| Namespace | `documents` |
+| Embedding model | `text-embedding-3-small` |
+
+The embedding model is the one that bites. Query with a different model from the
+one used at index time and the vectors are not comparable, so you get results
+back, they are just meaningless. No error, no warning, only bad answers.
+
+## The assistant will answer from memory if you let it
+
+`Simple Memory` keeps the last 10 turns, and a vector store attached as a tool is
+optional: the agent decides per turn whether to call it. With the answer already in
+the conversation it usually will not bother, so it can keep answering from a
+document you deleted ten minutes ago and never notice.
+
+This is worth knowing because it looks exactly like a broken index. It is not. Open
+the execution and check whether the vector store node ran at all.
+
+Two things keep it honest here. The system prompt requires a fresh lookup on every
+document question and forbids repeating an earlier answer as though it had just been
+retrieved. And when you are testing deletions, start a new chat session rather than
+continuing the old one.
+
+## Chat access
+
+The chat trigger ships with `public` enabled, which gives you a hosted chat URL you
+can open without the n8n editor. Turn it off if you would rather only reach it from
+inside n8n.
 
 ## Measured result
 
