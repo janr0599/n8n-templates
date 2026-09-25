@@ -1,16 +1,23 @@
-# Drive folder → vector store, kept current
+# Drive folder → vector store, kept in sync
 
-_Status: **published**. [`drive-to-vector-store.json`](./drive-to-vector-store.json) (16 nodes) and [`ask-the-knowledge-base.json`](./ask-the-knowledge-base.json) (7 nodes)._
+_Status: **published**. [`drive-to-vector-store.json`](./drive-to-vector-store.json) (19 nodes)
+and [`ask-the-knowledge-base.json`](./ask-the-knowledge-base.json) (7 nodes)._
 
 ## What it does
 
-Most RAG demos index a folder once. The interesting part is the second run: what
-happens when a file is edited, or when nothing has changed. This pattern walks a
-Drive folder on a schedule and, for each file, looks it up in the index by
-`file_id`. No entry means the file is new. An entry means comparing Drive's
-`modifiedTime` against the `last_modified` written when it was indexed, and doing
-nothing unless the file is genuinely newer. Only then are the old passages deleted
-and the file re-indexed.
+Most RAG demos index a folder once. The interesting part is every run after that:
+what happens when a file is edited, when nothing has changed, and when a file is
+deleted.
+
+This walks a Drive folder on a schedule and makes the index match it. New files are
+indexed. Edited files replace their own passages. Unchanged files cost nothing. And
+files that are no longer in the folder have their passages removed, which is the half
+most ingestion pipelines skip, because they iterate over what exists and a deletion is
+the absence of a thing.
+
+The second workflow is how you see it work: a chat window that answers from whatever
+is in the index right now. Delete a file, run the sync, ask again, and the answer is
+gone.
 
 ## Import
 
@@ -19,89 +26,77 @@ n8n → Workflows → Import from file → drive-to-vector-store.json
 n8n → Workflows → Import from file → ask-the-knowledge-base.json
 ```
 
-The first keeps the index current. The second is how you actually see it work:
-a chat window that answers from whatever is in the index right now. Ingestion on
-its own is only testable by staring at Pinecone.
-
-Then fill in three placeholders and attach three credentials:
-
 | Placeholder | Where | What to put |
 |---|---|---|
+| `YOUR_SHARED_DRIVE_ID` | List folder files | Your shared drive, or switch the filter to My Drive |
 | `YOUR_DRIVE_FOLDER_ID` | List folder files | The folder id from its Drive URL |
-| `YOUR_INDEX_NAME` | Index the passages | Your Pinecone index name |
-| `YOUR_INDEX_HOST` | Delete previous chunks | Your index host, e.g. `my-index-abc123.svc.us-east-1-aws.pinecone.io` |
+| `YOUR_INDEX_NAME` | both Pinecone nodes, both workflows | Your index name |
+| `YOUR_INDEX_HOST` | the three delete calls | `my-index-abc123.svc.us-east-1-aws.pinecone.io` |
 
-## Nodes, in order
+Credentials: Google Drive (read on one folder), OpenAI, Pinecone.
 
-| Node | Does | Notes |
-|---|---|---|
-| Every hour | Runs the pass on a schedule | Drive has no reliable per-folder change event, so this polls and filters |
-| List folder files | Lists every file with full metadata | `returnAll`, `fields: *`, so `modifiedTime` comes back |
-| Look up this file in the index | Asks the store whether this `file_id` is already there | Metadata filter does the lookup; `topK: 1`; continues on error so an empty index is not a failure |
-| Pair file with index entry | Left-joins the Drive file to its index entry | `id` ↔ `document.metadata.file_id`, `keepEverything` |
-| Never indexed? | Empty `document` means the file is new | New files go straight to download |
-| Changed since it was indexed? | `modifiedTime` later than `last_modified` | **The node that saves the money.** False means stop |
-| Nothing to do | Ends the run for an unchanged file | No download, no embedding, no write, no cost |
-| Download file | Fetches the binary, before anything is deleted | A failure here leaves the existing passages untouched |
-| Delete previous chunks | Deletes this file's vectors by `file_id` | Harmless for a new file: the filter matches nothing |
-| Wait for the delete | Holds the file until the delete finishes, then passes it through | `chooseBranch`, so the insert cannot race the delete |
-| Read the document | Reads the binary, attaches `file_id`, `file_name`, `last_modified` | `last_modified` is what the next run compares against |
-| Split into passages | 1000 characters, 200 overlap | |
-| Index the passages | Embeds and writes | `embeddingBatchSize: 1` |
+## The shape of it
 
-## Credentials you need
+```
+On a schedule → List folder files ─┬─> Only real files ─> Look up this file in the index ─┐
+                                   │                                                      ├─> Pair file with index entry
+                                   │                                                      │
+                                   │   ┌──────────────────────────────────────────────────┘
+                                   │   └─> Never indexed? ─true──────────────> Download file
+                                   │         └─false─> Changed since indexed? ─true─> Download file
+                                   │                     └─false─> Nothing to do
+                                   │
+                                   └─> Collect current file ids → Any files in the folder?
+                                            ├─ yes → Delete files no longer in the folder   ($nin)
+                                            └─ no  → Clear the namespace                    (deleteAll)
 
-- Google Drive (read access to one folder is enough)
-- An embeddings provider
-- A vector database (Pinecone in the original; any supported store works)
+Download file → Index the passages → Delete the old version → Time Saved
+```
 
-## Sample data
+## Three decisions worth copying
 
-Point it at any Drive folder with a few documents in it. There is nothing to seed:
-the workflow discovers whatever is in the folder.
+### Index first, then delete
 
-## Error handling
+The obvious order is delete the old passages, then write the new ones. This does the
+opposite, and filters the delete on `file_id` **and** `last_modified != the new value`.
 
-The download and extraction calls retry, and extraction continues on error so one
-unreadable file does not abandon the rest of the batch. The upsert does **not**
-continue on error: a passage that fails to write should fail loudly, because a
-partial index is the failure mode nobody notices.
+Two things fall out of that. The document is never absent from the index, where
+deleting first leaves a window when it is. And Pinecone's delete returns before it is
+fully applied, so a late-landing delete would otherwise match the passages just
+written and wipe the file entirely; filtering on `last_modified` makes that
+impossible.
 
-## Why the two checks exist
+The failure modes invert too. A failed delete now leaves duplicates, which are
+visible and recoverable. Deleting first meant a failed insert lost the document
+silently, which is worse.
 
-Most published RAG ingestion flows index a folder once, and the naive scheduled
-version re-indexes everything on every pass. That works, and it is wrong: you pay
-for embeddings on files nobody touched, burn Drive and vector-store quota, and
-leave a window on each pass where a document is deleted and not yet rewritten.
+`Delete the old version` is `executeOnce`, because the insert emits one item per
+chunk and without it a nine-chunk document fires nine identical deletes.
 
-The two checks are the whole point:
+### The sweep is the same pass, not a second workflow
 
-1. **Never indexed?** An empty join result means the file is new. Index it.
-2. **Changed since it was indexed?** Compare Drive's `modifiedTime` against the
-   `last_modified` stored on the file's own passages. If it is not newer, stop.
+A separate deletion workflow would need its own folder listing, so it inherits the
+same risk and adds a second schedule that can disagree with the first. One listing,
+one pass.
 
-Which is why `last_modified` has to be written as metadata at index time. Without
-it there is nothing to compare against on the next pass, and you are back to
-re-indexing everything.
+`Collect current file ids` aggregates the listing into a single item, and one call
+deletes every passage whose `file_id` is not in it. That is what handles a file being
+deleted, renamed out, or moved out of the folder, none of which the per-file path ever
+sees.
 
-Drive has no straightforward per-folder "file added or modified" event, which is
-why this polls on a schedule and filters, rather than triggering on change.
+### The empty folder is a branch, not an accident
 
-## Why the download comes first
+`Any files in the folder?` splits because `$nin` against an empty list is not a valid
+Pinecone filter. An empty folder clears the namespace with `deleteAll` instead.
 
-The order is deliberate. Downloading before deleting means a failed download costs
-nothing: the old passages are still in the index and the next pass tries again.
-Deleting first would leave a window where the document is gone from the index and
-its replacement never arrives.
+This is safe because `alwaysOutputData` only emits its placeholder item when the Drive
+call **succeeded** and found nothing. A failed call errors the run rather than
+returning zero items, so an empty listing genuinely means an empty folder.
 
-The `Wait for the delete` merge closes the other half of that race. It waits for
-both the download and the delete, then passes the downloaded file through, so the
-insert can only start once the old passages are actually gone.
+`Only real files` exists to keep that placeholder out of the per-file branch, where it
+would reach the embedding as `undefined` and fail the run.
 
 ## The two halves have to agree
-
-The chat side and the ingestion side are separate workflows pointed at the same
-place, and three things must match or retrieval silently returns nothing:
 
 | | Both workflows use |
 |---|---|
@@ -109,33 +104,49 @@ place, and three things must match or retrieval silently returns nothing:
 | Namespace | `documents` |
 | Embedding model | `text-embedding-3-small` |
 
-The embedding model is the one that bites. Query with a different model from the
-one used at index time and the vectors are not comparable, so you get results
-back, they are just meaningless. No error, no warning, only bad answers.
+The embedding model is the one that bites. Query with a different model from the one
+used at index time and the vectors are not comparable, so you get results back, they
+are just meaningless. No error, no warning, only bad answers.
+
+## Errors you will see, and which ones matter
+
+**`Namespace not found` on a sweep node is normal.** Pinecone does not keep empty
+namespaces, so once the index is emptied the namespace ceases to exist, and the next
+run's sweep runs before anything has been indexed. Deleting from a namespace that does
+not exist and deleting nothing are the same outcome, which is why both sweep nodes
+continue on error rather than branching around it. It resolves itself the moment
+something is indexed.
+
+**`Delete the old version` fails loudly on purpose.** With the new ordering a failed
+delete leaves duplicate passages rather than losing the document, and duplicates are
+worth being told about.
+
+Both sweep deletes retry twice; a 404 will never succeed on retry, so more attempts
+only add dead time. The per-file delete retries three times because it is a real
+operation worth insisting on.
 
 ## The assistant will answer from memory if you let it
 
 `Simple Memory` keeps the last 10 turns, and a vector store attached as a tool is
 optional: the agent decides per turn whether to call it. With the answer already in
-the conversation it usually will not bother, so it can keep answering from a
-document you deleted ten minutes ago and never notice.
+the conversation it usually will not bother, so it can keep answering from a document
+you deleted ten minutes ago.
 
-This is worth knowing because it looks exactly like a broken index. It is not. Open
-the execution and check whether the vector store node ran at all.
+This looks exactly like a broken index and is not one. Open the execution and check
+whether the vector store node ran at all.
 
-Two things keep it honest here. The system prompt requires a fresh lookup on every
-document question and forbids repeating an earlier answer as though it had just been
-retrieved. And when you are testing deletions, start a new chat session rather than
-continuing the old one.
+Two things keep it honest. The system prompt requires a fresh lookup on every document
+question and forbids repeating an earlier answer as though it had just been retrieved.
+And when testing deletions, start a new chat session rather than continuing the old one.
 
 ## Chat access
 
-The chat trigger ships with `public` enabled, which gives you a hosted chat URL you
-can open without the n8n editor. Turn it off if you would rather only reach it from
-inside n8n.
+The chat trigger ships with `public` enabled, which gives you a hosted chat URL you can
+open without the n8n editor. Turn it off if you would rather only reach it from inside
+n8n.
 
 ## Measured result
 
 Rebuilt from a production pipeline where documents dropped into a shared folder are
-answerable within minutes, and editing a file changes the answers rather than adding
-a competing version.
+answerable within minutes, editing a file changes the answers rather than adding a
+competing version, and deleting one removes it from the answers.

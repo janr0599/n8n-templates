@@ -1,38 +1,40 @@
 {
-  "name": "Index a Drive folder into a vector store",
+  "name": "Sync a Drive folder to a vector store",
   "nodes": [
     {
       "parameters": {
         "rule": {
           "interval": [
-            {
-              "field": "hours",
-              "hoursInterval": 1
-            }
+            {}
           ]
         }
       },
-      "id": "8d2b6e63-d961-4e6d-b1c7-22c13a4a3615",
-      "name": "Every hour",
       "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.4,
+      "typeVersion": 1.3,
       "position": [
-        0,
-        304
-      ]
+        -32,
+        336
+      ],
+      "id": "66e6dbee-12cb-4739-976a-7b04e8812c83",
+      "name": "On a schedule"
     },
     {
       "parameters": {
         "resource": "fileFolder",
-        "operation": "search",
         "searchMethod": "query",
-        "queryString": "",
         "returnAll": true,
         "filter": {
+          "driveId": {
+            "__rl": true,
+            "value": "YOUR_SHARED_DRIVE_ID",
+            "mode": "list",
+            "cachedResultName": "Your shared drive"
+          },
           "folderId": {
             "__rl": true,
-            "mode": "id",
-            "value": "YOUR_DRIVE_FOLDER_ID"
+            "value": "YOUR_DRIVE_FOLDER_ID",
+            "mode": "list",
+            "cachedResultName": "Your folder"
           },
           "whatToSearch": "files"
         },
@@ -42,29 +44,27 @@
           ]
         }
       },
-      "id": "6300dab6-0c79-446a-ac7f-4d5956ddc39c",
-      "name": "List folder files",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
       "position": [
-        224,
-        304
+        192,
+        336
       ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000
+      "id": "19e12dbe-85db-44bd-a08e-3e125cc5b9c3",
+      "name": "List folder files",
+      "alwaysOutputData": true
     },
     {
       "parameters": {
         "mode": "load",
         "pineconeIndex": {
           "__rl": true,
-          "mode": "id",
-          "value": "YOUR_INDEX_NAME"
+          "value": "YOUR_INDEX_NAME",
+          "mode": "list",
+          "cachedResultName": "YOUR_INDEX_NAME"
         },
         "prompt": "={{ $json.name }}",
         "topK": 1,
-        "includeDocumentMetadata": true,
         "options": {
           "pineconeNamespace": "documents",
           "metadata": {
@@ -77,34 +77,32 @@
           }
         }
       },
-      "id": "e3c5c9df-122a-4610-bf2a-09589fb7a38f",
-      "name": "Look up this file in the index",
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1.3,
       "position": [
-        448,
-        432
+        640,
+        656
       ],
-      "notes": "The metadata filter is the lookup. The prompt is only there because load mode requires one.",
-      "onError": "continueRegularOutput"
+      "id": "bc86c668-eed7-4b71-ab7a-f467a9028336",
+      "name": "Look up this file in the index"
     },
     {
       "parameters": {
+        "options": {},
         "model": "text-embedding-3-small"
       },
-      "id": "3c841336-671a-4d92-b53d-c57269c62b3f",
-      "name": "Embeddings for lookup",
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        528,
-        656
-      ]
+        712,
+        888
+      ],
+      "id": "6942b47d-24cc-4866-b41d-2796270b1057",
+      "name": "Embeddings for lookup"
     },
     {
       "parameters": {
         "mode": "combine",
-        "combineBy": "combineByFields",
         "advanced": true,
         "mergeByFields": {
           "values": [
@@ -117,28 +115,27 @@
         "joinMode": "keepEverything",
         "options": {}
       },
-      "id": "59f5082f-89c9-4e23-b84f-d7156d0c5683",
-      "name": "Pair file with index entry",
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        800,
-        304
+        992,
+        544
       ],
-      "notes": "Left join. A file with no index entry comes out with an empty document."
+      "id": "c2796d44-979c-40df-8fb5-3a9d9fac7fa7",
+      "name": "Pair file with index entry"
     },
     {
       "parameters": {
         "conditions": {
-          "combinator": "and",
           "options": {
             "caseSensitive": true,
             "leftValue": "",
             "typeValidation": "loose",
-            "version": 2
+            "version": 3
           },
           "conditions": [
             {
+              "id": "759313a0-3283-4db2-b3d7-d7048a51c043",
               "leftValue": "={{ $json.document }}",
               "rightValue": "",
               "operator": {
@@ -147,31 +144,53 @@
                 "singleValue": true
               }
             }
-          ]
+          ],
+          "combinator": "and"
         },
-        "looseTypeValidation": true
+        "looseTypeValidation": true,
+        "options": {}
       },
-      "id": "0879deea-0eeb-4c9c-8fab-592e295f21ff",
-      "name": "Never indexed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1024,
-        304
-      ]
+        1216,
+        544
+      ],
+      "id": "0ca86219-a214-4f0e-87d6-65440dbaa990",
+      "name": "Never indexed?"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $('List folder files').item.json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1632,
+        528
+      ],
+      "id": "cf432d51-17d5-4a41-afd5-1abb1b6711ae",
+      "name": "Download file",
+      "retryOnFail": true
     },
     {
       "parameters": {
         "conditions": {
-          "combinator": "and",
           "options": {
             "caseSensitive": true,
             "leftValue": "",
             "typeValidation": "strict",
-            "version": 2
+            "version": 3
           },
           "conditions": [
             {
+              "id": "56718516-5caf-4409-bc6b-75ceb3fc3ea8",
               "leftValue": "={{ $('List folder files').item.json.modifiedTime }}",
               "rightValue": "={{ $json.document.metadata.last_modified }}",
               "operator": {
@@ -179,61 +198,30 @@
                 "operation": "after"
               }
             }
-          ]
-        }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
       },
-      "id": "0d3855eb-8469-45fb-b8cb-9f06cb9fea25",
-      "name": "Changed since it was indexed?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        1248,
-        384
+        1424,
+        656
       ],
-      "notes": "Newer than the timestamp written at index time, or nothing happens."
+      "id": "5d9cb597-e650-46db-a592-23f0ec903dd0",
+      "name": "Changed since it was indexed?"
     },
     {
       "parameters": {},
-      "id": "5b96acff-5bce-42a5-9a26-934565c48f99",
-      "name": "Nothing to do",
       "type": "n8n-nodes-base.noOp",
       "typeVersion": 1,
       "position": [
-        1472,
-        432
+        1632,
+        752
       ],
-      "notes": "Already indexed and untouched. No download, no embedding, no write."
-    },
-    {
-      "parameters": {
-        "resource": "file",
-        "operation": "download",
-        "fileId": {
-          "__rl": true,
-          "mode": "id",
-          "value": "={{ $('List folder files').item.json.id }}"
-        },
-        "options": {
-          "binaryPropertyName": "data",
-          "googleFileConversion": {
-            "conversion": {
-              "docsToFormat": "text/plain"
-            }
-          }
-        }
-      },
-      "id": "7d132cf5-31e2-41b7-8f97-a4ce39101882",
-      "name": "Download file",
-      "type": "n8n-nodes-base.googleDrive",
-      "typeVersion": 3,
-      "position": [
-        1472,
-        208
-      ],
-      "retryOnFail": true,
-      "maxTries": 3,
-      "waitBetweenTries": 5000,
-      "notes": "Downloaded before anything is deleted, so a failure here leaves the existing passages untouched."
+      "id": "3e032cfc-ad46-4d26-bea7-3aaf73d6b385",
+      "name": "Nothing to do"
     },
     {
       "parameters": {
@@ -242,145 +230,250 @@
         "authentication": "predefinedCredentialType",
         "nodeCredentialType": "pineconeApi",
         "sendBody": true,
-        "contentType": "json",
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ namespace: \"documents\", filter: { file_id: { $eq: $('List folder files').item.json.id } } }) }}"
+        "jsonBody": "={\n  \"namespace\": \"documents\",\n  \"filter\": {\n    \"file_id\": { \"$eq\": \"{{ $('Download file').item.json.id }}\" },\n    \"last_modified\": { \"$ne\": \"{{ $('Download file').item.json.modifiedTime }}\" }\n  }\n}",
+        "options": {}
       },
-      "id": "97463929-394b-438d-bc94-0194cbdcda52",
-      "name": "Delete previous chunks",
       "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.5,
+      "typeVersion": 4.4,
       "position": [
-        1696,
-        288
+        2256,
+        528
       ],
-      "notes": "Harmless for a file that was never indexed: the filter simply matches nothing.",
+      "id": "53f61241-b823-4795-9d24-b18297c171a7",
+      "name": "Delete the old version",
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
-    },
-    {
-      "parameters": {
-        "mode": "chooseBranch",
-        "numberInputs": 2,
-        "chooseBranchMode": "waitForAll",
-        "output": "specifiedInput",
-        "useDataOfInput": "1"
-      },
-      "id": "95b22b05-a175-41da-b2e6-a4365155b06a",
-      "name": "Wait for the delete",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 3.2,
-      "position": [
-        1920,
-        208
-      ],
-      "notes": "Holds the downloaded file until the delete has finished, then passes the file through. Without this the insert could race the delete and lose the new passages."
+      "waitBetweenTries": 5000,
+      "executeOnce": true
     },
     {
       "parameters": {
         "mode": "insert",
         "pineconeIndex": {
           "__rl": true,
-          "mode": "id",
-          "value": "YOUR_INDEX_NAME"
+          "value": "YOUR_INDEX_NAME",
+          "mode": "list",
+          "cachedResultName": "YOUR_INDEX_NAME"
         },
         "embeddingBatchSize": 1,
         "options": {
           "pineconeNamespace": "documents"
         }
       },
-      "id": "b7c73451-e570-4494-ae6b-a5109ac93264",
-      "name": "Index the passages",
       "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
       "typeVersion": 1.3,
       "position": [
-        2144,
-        208
-      ]
+        1904,
+        528
+      ],
+      "id": "9a6f3566-7fae-4096-9bc9-8dff9fd70595",
+      "name": "Index the passages"
     },
     {
       "parameters": {
+        "options": {},
         "model": "text-embedding-3-small"
       },
-      "id": "d1d04a77-98d2-452c-a640-95887eeef00a",
-      "name": "Embeddings for writing",
       "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
       "typeVersion": 1.2,
       "position": [
-        2160,
-        432
-      ]
+        1888,
+        704
+      ],
+      "id": "28f4fa5e-c26b-4925-a71b-3322b4e92886",
+      "name": "Embeddings for writing"
     },
     {
       "parameters": {
         "dataType": "binary",
-        "binaryMode": "allInputData",
-        "loader": "auto",
-        "textSplittingMode": "custom",
         "options": {
           "metadata": {
             "metadataValues": [
               {
                 "name": "file_id",
-                "value": "={{ $('List folder files').item.json.id }}"
+                "value": "={{ $('Download file').item.json.id }}"
               },
               {
                 "name": "file_name",
-                "value": "={{ $('List folder files').item.json.name }}"
+                "value": "={{ $('Download file').item.json.name }}"
               },
               {
                 "name": "last_modified",
-                "value": "={{ $('List folder files').item.json.modifiedTime }}"
+                "value": "={{ $('Download file').item.json.modifiedTime }}"
               }
             ]
           }
         }
       },
-      "id": "82f9e9a8-96d0-4d0e-9638-1f3dba579952",
-      "name": "Read the document",
       "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
       "typeVersion": 1.1,
       "position": [
-        2288,
-        432
+        2064,
+        704
       ],
-      "notes": "last_modified is what the next run compares against. Without it there is no change detection."
+      "id": "ab26c8f3-fbd8-491d-9c3c-20264cf57b6c",
+      "name": "Read the document"
     },
     {
       "parameters": {
-        "chunkSize": 1000,
-        "chunkOverlap": 200
+        "mode": "perItem",
+        "minutesSaved": 5
       },
-      "id": "89ea3879-8d7f-4826-8aad-0027c92fc81f",
-      "name": "Split into passages",
-      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "type": "n8n-nodes-base.timeSaved",
       "typeVersion": 1,
       "position": [
-        2288,
-        640
-      ]
+        2480,
+        528
+      ],
+      "id": "b5c9a73c-8fa5-46a6-bf25-03226fc0ddb5",
+      "name": "Time Saved"
     },
     {
       "parameters": {
-        "content": "### Only new and changed files are written\nEvery pass looks each file up by `file_id`. No entry means new. An entry means compare Drive `modifiedTime` against the `last_modified` written at index time, and stop unless it is newer.\n\nThe file is downloaded **before** anything is deleted, and the insert waits for the delete, so a failed download never leaves the index missing a document.",
-        "height": 260,
-        "width": 460,
-        "color": 4
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "id"
+            }
+          ]
+        },
+        "options": {}
       },
-      "id": "d709a68f-1f20-44d3-8c4e-9b5ae8bea413",
-      "name": "Only new and changed files are written",
-      "type": "n8n-nodes-base.stickyNote",
+      "id": "2b3fc199-3658-487d-b732-6b2459685a18",
+      "name": "Collect current file ids",
+      "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        1072,
-        640
-      ]
+        416,
+        128
+      ],
+      "notes": "One item holding every file id currently in the folder. The sweep deletes anything else."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "guard-empty-listing",
+              "leftValue": "={{ $json.id }}",
+              "operator": {
+                "type": "array",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "16d6914c-a5ba-46f5-a262-ca2d4db0ddbe",
+      "name": "Any files in the folder?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        704,
+        128
+      ],
+      "notes": "Both branches act. Files present: delete every passage whose file_id is not among them. Folder empty: clear the namespace, because an empty folder should mean an empty index. An empty listing only happens when the Drive call succeeded and found nothing, since a failed call errors the run rather than returning zero items."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_INDEX_HOST/vectors/delete",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"namespace\": \"documents\",\n  \"filter\": {\n    \"file_id\": { \"$nin\": {{ JSON.stringify($json.id) }} }\n  }\n}",
+        "options": {}
+      },
+      "id": "2ce55b17-7495-48ee-bb4f-6541f855f8d1",
+      "name": "Delete files no longer in the folder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        992,
+        32
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "Deletes every passage whose file_id is not in the current listing. This is what handles a file being deleted or moved out of the folder, which the per-file path never sees."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "has-a-file-id",
+              "leftValue": "={{ $json.id }}",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "c67c3b80-f841-4b20-a6b9-b40486b30324",
+      "name": "Only real files",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        528
+      ],
+      "notes": "The listing emits one empty placeholder item when the folder is empty, so the sweep can still see that. This keeps that placeholder out of the per-file path, where it would reach the embedding as undefined."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR_INDEX_HOST/vectors/delete",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "pineconeApi",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"namespace\": \"documents\",\n  \"deleteAll\": true\n}",
+        "options": {}
+      },
+      "id": "4b3a1a45-dfc2-4613-b1f4-ad952ba871c3",
+      "name": "Clear the namespace",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        992,
+        224
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput",
+      "notes": "The folder is empty, so the index should be too. A $nin against an empty list is not a valid filter, which is why this is a separate deleteAll call rather than the same node."
     }
   ],
   "pinData": {},
   "connections": {
-    "Every hour": {
+    "On a schedule": {
       "main": [
         [
           {
@@ -395,12 +488,12 @@
       "main": [
         [
           {
-            "node": "Pair file with index entry",
+            "node": "Collect current file ids",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Look up this file in the index",
+            "node": "Only real files",
             "type": "main",
             "index": 0
           }
@@ -476,44 +569,6 @@
         ]
       ]
     },
-    "Download file": {
-      "main": [
-        [
-          {
-            "node": "Wait for the delete",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Delete previous chunks",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Delete previous chunks": {
-      "main": [
-        [
-          {
-            "node": "Wait for the delete",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Wait for the delete": {
-      "main": [
-        [
-          {
-            "node": "Index the passages",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Embeddings for writing": {
       "ai_embedding": [
         [
@@ -536,12 +591,79 @@
         ]
       ]
     },
-    "Split into passages": {
-      "ai_textSplitter": [
+    "Download file": {
+      "main": [
         [
           {
-            "node": "Read the document",
-            "type": "ai_textSplitter",
+            "node": "Index the passages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Index the passages": {
+      "main": [
+        [
+          {
+            "node": "Delete the old version",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete the old version": {
+      "main": [
+        [
+          {
+            "node": "Time Saved",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect current file ids": {
+      "main": [
+        [
+          {
+            "node": "Any files in the folder?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Only real files": {
+      "main": [
+        [
+          {
+            "node": "Look up this file in the index",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Pair file with index entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Any files in the folder?": {
+      "main": [
+        [
+          {
+            "node": "Delete files no longer in the folder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Clear the namespace",
+            "type": "main",
             "index": 0
           }
         ]
@@ -551,7 +673,10 @@
   "settings": {
     "executionOrder": "v1",
     "binaryMode": "separate",
-    "availableInMCP": true
+    "timeSavedMode": "dynamic",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true,
+    "timeSavedPerExecution": 5
   },
   "nodeGroups": []
 }
